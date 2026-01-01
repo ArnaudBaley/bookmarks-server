@@ -1,4 +1,13 @@
 import type { Preview } from '@storybook/vue3-vite'
+import { setup } from '@storybook/vue3'
+import { createPinia } from 'pinia'
+import '../src/assets/main.css'
+
+// Set up Pinia for all stories
+setup((app) => {
+  const pinia = createPinia()
+  app.use(pinia)
+})
 
 const preview: Preview = {
   parameters: {
