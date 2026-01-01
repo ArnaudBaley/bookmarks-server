@@ -1,8 +1,14 @@
 <template>
   <header>
-    <div class="storybook-header">
+    <div class="flex justify-between items-center border-b border-black/10 py-[15px] px-5 font-['Nunito Sans','Helvetica Neue',Helvetica,Arial,sans-serif]">
       <div>
-        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 32 32"
+          xmlns="http://www.w3.org/2000/svg"
+          class="inline-block align-top"
+        >
           <g fill="none" fill-rule="evenodd">
             <path
               d="M10 0h12a10 10 0 0110 10v12a10 10 0 01-10 10H10A10 10 0 010 22V10A10 10 0 0110 0z"
@@ -18,10 +24,10 @@
             />
           </g>
         </svg>
-        <h1>Acme</h1>
+        <h1 class="inline-block align-top my-1.5 ml-2.5 font-bold text-xl leading-none">Acme</h1>
       </div>
-      <div>
-        <span class="welcome" v-if="user"
+      <div class="flex items-center gap-2.5">
+        <span v-if="user" class="text-[#333] text-sm"
           >Welcome, <b>{{ user.name }}</b
           >!</span
         >
@@ -41,7 +47,6 @@
 
 <script lang="ts" setup>
 import MyButton from './Button.vue';
-import './header.css';
 
 defineProps<{ user: { name: string } | null }>();
 

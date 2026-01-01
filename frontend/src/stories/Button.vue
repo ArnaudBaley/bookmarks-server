@@ -1,11 +1,26 @@
 <template>
-  <button type="button" :class="classes" @click="onClick" :style="style">{{ label }}</button>
+  <button
+    type="button"
+    :class="[
+      'inline-block cursor-pointer border-0 rounded-[3em] font-bold leading-none font-[\'Nunito Sans\',\'Helvetica Neue\',Helvetica,Arial,sans-serif]',
+      props.primary
+        ? 'bg-[#555ab9] text-white'
+        : 'shadow-[rgba(0,0,0,0.15)_0px_0px_0px_1px_inset] bg-transparent text-[#333]',
+      props.size === 'small'
+        ? 'px-4 py-2.5 text-xs'
+        : props.size === 'large'
+          ? 'px-6 py-3 text-base'
+          : 'px-5 py-[11px] text-sm',
+    ]"
+    @click="onClick"
+    :style="props.backgroundColor ? { backgroundColor: props.backgroundColor } : {}"
+  >
+    {{ label }}
+  </button>
 </template>
 
 <script lang="ts" setup>
 import { computed } from 'vue';
-
-import './button.css';
 
 const props = withDefaults(
   defineProps<{
@@ -32,17 +47,6 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: 'click', id: number): void;
 }>();
-
-const classes = computed(() => ({
-  'storybook-button': true,
-  'storybook-button--primary': props.primary,
-  'storybook-button--secondary': !props.primary,
-  [`storybook-button--${props.size || 'medium'}`]: true,
-}));
-
-const style = computed(() => ({
-  backgroundColor: props.backgroundColor,
-}));
 
 const onClick = () => {
   emit('click', 1);

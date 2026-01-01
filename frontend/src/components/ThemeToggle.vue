@@ -6,48 +6,13 @@ const themeStore = useThemeStore()
 
 <template>
   <button
-    class="theme-toggle"
+    class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] text-2xl cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
     @click="themeStore.toggleTheme()"
     :aria-label="`Switch to ${themeStore.theme === 'light' ? 'dark' : 'light'} theme`"
     :title="`Switch to ${themeStore.theme === 'light' ? 'dark' : 'light'} theme`"
   >
-    <span v-if="themeStore.theme === 'light'" class="theme-icon">🌙</span>
-    <span v-else class="theme-icon">☀️</span>
+    <span v-if="themeStore.theme === 'light'" class="leading-none flex items-center justify-center">🌙</span>
+    <span v-else class="leading-none flex items-center justify-center">☀️</span>
   </button>
 </template>
-
-<style scoped>
-.theme-toggle {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-background-soft);
-  color: var(--color-text);
-  font-size: 1.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s, background-color 0.2s, border-color 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.theme-toggle:hover {
-  transform: scale(1.1);
-  background-color: var(--color-background-mute);
-  border-color: var(--color-border-hover);
-}
-
-.theme-toggle:active {
-  transform: scale(0.95);
-}
-
-.theme-icon {
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-</style>
 

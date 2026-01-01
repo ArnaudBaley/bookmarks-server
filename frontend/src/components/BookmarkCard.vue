@@ -33,98 +33,30 @@ function getFaviconUrl(url: string): string {
 </script>
 
 <template>
-  <div class="bookmark-card">
-    <div class="bookmark-icon" @click="handleClick" role="button" tabindex="0" @keyup.enter="handleClick">
-      <img :src="getFaviconUrl(bookmark.url)" :alt="`${bookmark.name} icon`" />
+  <div
+    class="flex flex-col items-center p-6 border border-[var(--color-border)] rounded-lg bg-[var(--color-background-soft)] transition-[transform,box-shadow] duration-200 cursor-default hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
+  >
+    <div
+      class="w-16 h-16 flex items-center justify-center cursor-pointer rounded-lg transition-transform duration-200 mb-4 hover:scale-110 focus:outline focus:outline-2 focus:outline-[var(--color-text)] focus:outline-offset-2"
+      @click="handleClick"
+      role="button"
+      tabindex="0"
+      @keyup.enter="handleClick"
+    >
+      <img :src="getFaviconUrl(bookmark.url)" :alt="`${bookmark.name} icon`" class="w-full h-full object-contain" />
     </div>
-    <div class="bookmark-content">
-      <h3 class="bookmark-name">{{ bookmark.name }}</h3>
-      <button class="delete-button" @click="handleDelete" aria-label="Delete bookmark">
+    <div class="w-full flex flex-col items-center gap-3">
+      <h3 class="m-0 text-base font-medium text-center break-words text-[var(--color-text)]">
+        {{ bookmark.name }}
+      </h3>
+      <button
+        class="px-4 py-2 bg-[#dc3545] text-white border-none rounded cursor-pointer text-sm transition-colors duration-200 hover:bg-[#c82333] active:scale-[0.98]"
+        @click="handleDelete"
+        aria-label="Delete bookmark"
+      >
         Delete
       </button>
     </div>
   </div>
 </template>
-
-<style scoped>
-.bookmark-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background-color: var(--color-background-soft);
-  transition: transform 0.2s, box-shadow 0.2s;
-  cursor: default;
-}
-
-.bookmark-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.bookmark-icon {
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: transform 0.2s;
-  margin-bottom: 1rem;
-}
-
-.bookmark-icon:hover {
-  transform: scale(1.1);
-}
-
-.bookmark-icon:focus {
-  outline: 2px solid var(--color-text);
-  outline-offset: 2px;
-}
-
-.bookmark-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.bookmark-content {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.bookmark-name {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 500;
-  text-align: center;
-  word-break: break-word;
-  color: var(--color-text);
-}
-
-.delete-button {
-  padding: 0.5rem 1rem;
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: background-color 0.2s;
-}
-
-.delete-button:hover {
-  background-color: #c82333;
-}
-
-.delete-button:active {
-  transform: scale(0.98);
-}
-</style>
 

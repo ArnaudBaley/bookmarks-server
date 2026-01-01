@@ -72,12 +72,19 @@ function handleCancel() {
 </script>
 
 <template>
-  <div class="form-overlay" @click.self="handleCancel">
-    <div class="form-container">
-      <h2>Add New Bookmark</h2>
+  <div
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]"
+    @click.self="handleCancel"
+  >
+    <div
+      class="bg-[var(--color-background)] p-8 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.3)] w-[90%] max-w-[500px]"
+    >
+      <h2 class="m-0 mb-6 text-[var(--color-text)]">Add New Bookmark</h2>
       <form @submit.prevent="handleSubmit">
-        <div class="form-group">
-          <label for="bookmark-name">Name</label>
+        <div class="mb-6">
+          <label for="bookmark-name" class="block mb-2 text-[var(--color-text)] font-medium">
+            Name
+          </label>
           <input
             id="bookmark-name"
             v-model="name"
@@ -85,121 +92,40 @@ function handleCancel() {
             placeholder="Enter bookmark name"
             required
             autofocus
+            class="w-full px-3 py-3 border border-[var(--color-border)] rounded text-base bg-[var(--color-background-soft)] text-[var(--color-text)] box-border focus:outline focus:outline-2 focus:outline-[var(--color-text)] focus:outline-offset-2"
           />
         </div>
-        <div class="form-group">
-          <label for="bookmark-url">URL</label>
+        <div class="mb-6">
+          <label for="bookmark-url" class="block mb-2 text-[var(--color-text)] font-medium">
+            URL
+          </label>
           <input
             id="bookmark-url"
             v-model="url"
             type="text"
             placeholder="https://example.com"
             required
+            class="w-full px-3 py-3 border border-[var(--color-border)] rounded text-base bg-[var(--color-background-soft)] text-[var(--color-text)] box-border focus:outline focus:outline-2 focus:outline-[var(--color-text)] focus:outline-offset-2"
           />
         </div>
-        <div v-if="error" class="error-message">{{ error }}</div>
-        <div class="form-actions">
-          <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
-          <button type="submit" class="submit-button">Add Bookmark</button>
+        <div v-if="error" class="text-[#dc3545] mb-4 text-sm">{{ error }}</div>
+        <div class="flex gap-4 justify-end">
+          <button
+            type="button"
+            class="px-6 py-3 border-none rounded text-base cursor-pointer transition-colors duration-200 bg-[var(--color-background-soft)] text-[var(--color-text)] hover:bg-[var(--color-border)]"
+            @click="handleCancel"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-6 py-3 border-none rounded text-base cursor-pointer transition-colors duration-200 bg-[hsla(160,100%,37%,1)] text-white hover:bg-[hsla(160,100%,37%,0.8)]"
+          >
+            Add Bookmark
+          </button>
         </div>
       </form>
     </div>
   </div>
 </template>
-
-<style scoped>
-.form-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.form-container {
-  background-color: var(--color-background);
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  width: 90%;
-  max-width: 500px;
-}
-
-.form-container h2 {
-  margin: 0 0 1.5rem 0;
-  color: var(--color-text);
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: var(--color-text);
-  font-weight: 500;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  font-size: 1rem;
-  background-color: var(--color-background-soft);
-  color: var(--color-text);
-  box-sizing: border-box;
-}
-
-.form-group input:focus {
-  outline: 2px solid var(--color-text);
-  outline-offset: 2px;
-}
-
-.error-message {
-  color: #dc3545;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-}
-
-.cancel-button,
-.submit-button {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.cancel-button {
-  background-color: var(--color-background-soft);
-  color: var(--color-text);
-}
-
-.cancel-button:hover {
-  background-color: var(--color-border);
-}
-
-.submit-button {
-  background-color: hsla(160, 100%, 37%, 1);
-  color: white;
-}
-
-.submit-button:hover {
-  background-color: hsla(160, 100%, 37%, 0.8);
-}
-</style>
 
