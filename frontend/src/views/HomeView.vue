@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useBookmarkStore } from '@/stores/bookmark'
 import BookmarkCard from '@/components/BookmarkCard.vue'
 import AddBookmarkForm from '@/components/AddBookmarkForm.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import type { CreateBookmarkDto } from '@/types/bookmark'
 
 const bookmarkStore = useBookmarkStore()
@@ -34,9 +35,12 @@ async function handleDeleteBookmark(id: string) {
   <main class="home-view">
     <div class="header">
       <h1>My Bookmarks</h1>
-      <button class="add-button" @click="showAddForm = true" aria-label="Add new bookmark">
-        <span class="add-icon">+</span>
-      </button>
+      <div class="header-actions">
+        <ThemeToggle />
+        <button class="add-button" @click="showAddForm = true" aria-label="Add new bookmark">
+          <span class="add-icon">+</span>
+        </button>
+      </div>
     </div>
 
     <div v-if="bookmarkStore.loading && bookmarkStore.bookmarks.length === 0" class="loading">
@@ -78,6 +82,12 @@ async function handleDeleteBookmark(id: string) {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
 }
 
 .header h1 {
