@@ -18,6 +18,13 @@
   
   - A generic icon that must be clickable (open the url in a new tab)
   - A name
-  - A button to delete the card
+  - A button to delete the card (just an icon)
 
 - An icon "+" at the top of the page allow to create a new card (display a form)
+
+
+## Theme
+
+- By default the application theme depends of the browser settings
+
+- An icon at the top of the page allows to switch theme
