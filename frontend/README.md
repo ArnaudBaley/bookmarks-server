@@ -33,3 +33,5 @@
 ## Tests 
 
 - Golden test using playwright snapshots
+
+- Storybook to have a catalog of components and to manually test them
