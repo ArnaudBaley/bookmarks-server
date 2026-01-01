@@ -28,3 +28,8 @@
 - By default the application theme depends of the browser settings
 
 - An icon at the top of the page allows to switch theme
+
+
+## Tests 
+
+- Golden test using playwright snapshots
