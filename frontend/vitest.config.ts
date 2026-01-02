@@ -19,6 +19,28 @@ export default mergeConfig(
             environment: 'jsdom',
             exclude: [...configDefaults.exclude, 'e2e/**'],
             root: fileURLToPath(new URL('./', import.meta.url)),
+            coverage: {
+              provider: 'v8',
+              reporter: ['text', 'json', 'html', 'lcov'],
+              exclude: [
+                'node_modules/',
+                'e2e/',
+                '**/*.config.{js,ts}',
+                '**/dist/**',
+                '**/.{idea,git,cache,output,temp}/**',
+                '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*',
+                '**/*.d.ts',
+                '**/*.stories.{ts,tsx}',
+                '**/stories/**',
+                '**/.storybook/**',
+              ],
+              thresholds: {
+                lines: 80,
+                functions: 80,
+                branches: 80,
+                statements: 80,
+              },
+            },
           },
         },
         {

@@ -11,6 +11,7 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "test:unit": "vitest",
+    "test:unit:coverage": "vitest --coverage",
     "test:e2e": "playwright test",
     "test:snapshots": "playwright test e2e/snapshots.spec.ts --update-snapshots",
     "test:snapshots:ci": "playwright test e2e/snapshots.spec.ts",

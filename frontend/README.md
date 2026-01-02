@@ -8,6 +8,7 @@
 
 - this "bookmarks-server" is an alternative to native browsers bookmarks features or plugins.
 
+
 ## Core Features
 
 - As a user, I must be able to open the home page of my application.
@@ -21,6 +22,7 @@
   - A button to delete the card (just an icon)
 
 - An icon "+" at the top of the page allow to create a new card (display a form)
+
 
 
 ## Theme
