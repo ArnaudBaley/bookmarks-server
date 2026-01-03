@@ -18,9 +18,11 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix --cache",
+    "lint:check": "eslint . --cache",
     "format": "prettier --write --experimental-cli src/",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "prepare": "husky"
   },
   "dependencies": {
     "pinia": "^3.0.4",
@@ -52,6 +54,7 @@
     "eslint-plugin-playwright": "^2.4.0",
     "eslint-plugin-storybook": "^10.1.11",
     "eslint-plugin-vue": "~10.6.2",
+    "husky": "^9.1.7",
     "jiti": "^2.6.1",
     "jsdom": "^27.3.0",
     "npm-run-all2": "^8.0.4",

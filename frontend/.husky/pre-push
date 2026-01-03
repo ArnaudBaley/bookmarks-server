@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+cd "$(dirname -- "$0")/.." || exit
+
+echo "🔍 Running linter..."
+npm run lint:check || {
+  echo "❌ Linting failed. Please fix the errors and try again."
+  exit 1
+}
+
+echo "🧪 Running unit tests..."
+npm run test:unit || {
+  echo "❌ Unit tests failed. Please fix the errors and try again."
+  exit 1
+}
+
+echo "🎭 Running e2e tests..."
+npm run test:e2e || {
+  echo "❌ E2e tests failed. Please fix the errors and try again."
+  exit 1
+}
+
+echo "✅ All checks passed!"
+
