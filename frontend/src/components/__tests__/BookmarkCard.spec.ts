@@ -8,8 +8,6 @@ describe('BookmarkCard', () => {
 
   beforeEach(() => {
     mockOpen = mockWindowOpen()
-    // Mock window.confirm to return true by default
-    window.confirm = vi.fn(() => true)
   })
 
   afterEach(() => {
@@ -64,32 +62,17 @@ describe('BookmarkCard', () => {
     expect(mockOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
   })
 
-  it('emits delete event when delete button is clicked and confirmed', async () => {
+  it('emits modify event when modify button is clicked', async () => {
     const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
     const wrapper = mount(BookmarkCard, {
       props: { bookmark },
     })
 
-    const deleteButton = wrapper.find('button[aria-label="Delete bookmark"]')
-    await deleteButton.trigger('click')
+    const modifyButton = wrapper.find('button[aria-label="Modify bookmark"]')
+    await modifyButton.trigger('click')
 
-    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete "Test Bookmark"?')
-    expect(wrapper.emitted('delete')).toBeTruthy()
-    expect(wrapper.emitted('delete')?.[0]).toEqual(['test-id'])
-  })
-
-  it('does not emit delete event when confirmation is cancelled', async () => {
-    window.confirm = vi.fn(() => false)
-    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
-    const wrapper = mount(BookmarkCard, {
-      props: { bookmark },
-    })
-
-    const deleteButton = wrapper.find('button[aria-label="Delete bookmark"]')
-    await deleteButton.trigger('click')
-
-    expect(window.confirm).toHaveBeenCalled()
-    expect(wrapper.emitted('delete')).toBeFalsy()
+    expect(wrapper.emitted('modify')).toBeTruthy()
+    expect(wrapper.emitted('modify')?.[0]).toEqual([bookmark])
   })
 
   it('handles invalid URLs in getFaviconUrl by returning default favicon', () => {
@@ -114,15 +97,17 @@ describe('BookmarkCard', () => {
     expect(img.exists()).toBe(true)
   })
 
-  it('renders delete button with correct aria-label', () => {
+  it('renders modify button with correct aria-label', () => {
     const bookmark = createBookmark()
     const wrapper = mount(BookmarkCard, {
       props: { bookmark },
     })
 
-    const deleteButton = wrapper.find('button[aria-label="Delete bookmark"]')
-    expect(deleteButton.exists()).toBe(true)
-    expect(deleteButton.text()).toBe('Delete')
+    const modifyButton = wrapper.find('button[aria-label="Modify bookmark"]')
+    expect(modifyButton.exists()).toBe(true)
+    // Check that it contains an SVG (the edit icon)
+    const svg = modifyButton.find('svg')
+    expect(svg.exists()).toBe(true)
   })
 
   it('has correct CSS classes for styling', () => {

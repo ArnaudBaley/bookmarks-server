@@ -1,5 +1,5 @@
 import type { IBookmarkApi } from './bookmarkApi.interface'
-import type { Bookmark, CreateBookmarkDto } from '@/types/bookmark'
+import type { Bookmark, CreateBookmarkDto, UpdateBookmarkDto } from '@/types/bookmark'
 
 const STORAGE_KEY = 'bookmarks-mock-data'
 
@@ -47,6 +47,29 @@ export class MockBookmarkApi implements IBookmarkApi {
     bookmarks.push(newBookmark)
     this.setStorage(bookmarks)
     return newBookmark
+  }
+
+  async updateBookmark(id: string, data: UpdateBookmarkDto): Promise<Bookmark> {
+    console.log('[MockBookmarkApi] Updating bookmark:', id, data)
+    await this.simulateDelay()
+
+    const bookmarks = this.getStorage()
+    const bookmarkIndex = bookmarks.findIndex((bookmark) => bookmark.id === id)
+    
+    if (bookmarkIndex === -1) {
+      throw new Error(`Bookmark with id ${id} not found`)
+    }
+
+    const updatedBookmark: Bookmark = {
+      ...bookmarks[bookmarkIndex],
+      name: data.name,
+      url: data.url,
+      updatedAt: new Date().toISOString(),
+    }
+    
+    bookmarks[bookmarkIndex] = updatedBookmark
+    this.setStorage(bookmarks)
+    return updatedBookmark
   }
 
   async deleteBookmark(id: string): Promise<void> {

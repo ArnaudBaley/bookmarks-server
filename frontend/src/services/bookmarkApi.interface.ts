@@ -1,4 +1,4 @@
-import type { Bookmark, CreateBookmarkDto } from '@/types/bookmark'
+import type { Bookmark, CreateBookmarkDto, UpdateBookmarkDto } from '@/types/bookmark'
 
 /**
  * Interface for bookmark API communication
@@ -17,6 +17,14 @@ export interface IBookmarkApi {
    * @returns Promise resolving to the created bookmark
    */
   createBookmark(data: CreateBookmarkDto): Promise<Bookmark>
+
+  /**
+   * Update an existing bookmark
+   * @param id - The ID of the bookmark to update
+   * @param data - The bookmark data to update
+   * @returns Promise resolving to the updated bookmark
+   */
+  updateBookmark(id: string, data: UpdateBookmarkDto): Promise<Bookmark>
 
   /**
    * Delete a bookmark by ID

@@ -11,3 +11,8 @@ export interface CreateBookmarkDto {
   url: string
 }
 
+export interface UpdateBookmarkDto {
+  name: string
+  url: string
+}
+

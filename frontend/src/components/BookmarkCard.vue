@@ -6,7 +6,7 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'delete', id: string): void
+  (e: 'modify', bookmark: Bookmark): void
 }
 
 const props = defineProps<Props>()
@@ -16,10 +16,8 @@ function handleClick() {
   window.open(props.bookmark.url, '_blank', 'noopener,noreferrer')
 }
 
-function handleDelete() {
-  if (confirm(`Are you sure you want to delete "${props.bookmark.name}"?`)) {
-    emit('delete', props.bookmark.id)
-  }
+function handleModify() {
+  emit('modify', props.bookmark)
 }
 
 function getFaviconUrl(url: string): string {
@@ -50,11 +48,24 @@ function getFaviconUrl(url: string): string {
         {{ bookmark.name }}
       </h3>
       <button
-        class="px-4 py-2 bg-[#dc3545] text-white border-none rounded cursor-pointer text-sm transition-colors duration-200 hover:bg-[#c82333] active:scale-[0.98]"
-        @click="handleDelete"
-        aria-label="Delete bookmark"
+        class="p-2 bg-[var(--color-background-soft)] border border-[var(--color-border)] rounded cursor-pointer transition-colors duration-200 hover:bg-[var(--color-border)] active:scale-[0.98] text-[var(--color-text)]"
+        @click="handleModify"
+        aria-label="Modify bookmark"
       >
-        Delete
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
       </button>
     </div>
   </div>

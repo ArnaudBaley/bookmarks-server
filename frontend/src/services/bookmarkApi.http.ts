@@ -1,5 +1,5 @@
 import type { IBookmarkApi } from './bookmarkApi.interface'
-import type { Bookmark, CreateBookmarkDto } from '@/types/bookmark'
+import type { Bookmark, CreateBookmarkDto, UpdateBookmarkDto } from '@/types/bookmark'
 
 /**
  * HTTP implementation of IBookmarkApi for real backend communication
@@ -39,6 +39,25 @@ export class HttpBookmarkApi implements IBookmarkApi {
       return await response.json()
     } catch (error) {
       console.error('[HttpBookmarkApi] Error creating bookmark:', error)
+      throw error
+    }
+  }
+
+  async updateBookmark(id: string, data: UpdateBookmarkDto): Promise<Bookmark> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookmarks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to update bookmark: ${response.statusText}`)
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('[HttpBookmarkApi] Error updating bookmark:', error)
       throw error
     }
   }

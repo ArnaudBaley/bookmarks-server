@@ -201,7 +201,51 @@ describe('HomeView', () => {
     consoleErrorSpy.mockRestore()
   })
 
-  it('handles delete bookmark success', async () => {
+  it('shows EditBookmarkForm when modify event is emitted', async () => {
+    const wrapper = mountWithPinia(HomeView)
+    const store = useBookmarkStore()
+
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    store.bookmarks = [bookmark]
+    await wrapper.vm.$nextTick()
+
+    const bookmarkCard = wrapper.findComponent({ name: 'BookmarkCard' })
+    await bookmarkCard.vm.$emit('modify', bookmark)
+    await wrapper.vm.$nextTick()
+
+    const editForm = wrapper.findComponent({ name: 'EditBookmarkForm' })
+    expect(editForm.exists()).toBe(true)
+    expect(editForm.props('bookmark')).toEqual(bookmark)
+  })
+
+  it('handles update bookmark success and hides form', async () => {
+    const wrapper = mountWithPinia(HomeView)
+    const store = useBookmarkStore()
+
+    const updateBookmarkSpy = vi.spyOn(store, 'updateBookmark').mockResolvedValue(createBookmark())
+
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    store.bookmarks = [bookmark]
+    await wrapper.vm.$nextTick()
+
+    // Open edit form
+    const bookmarkCard = wrapper.findComponent({ name: 'BookmarkCard' })
+    await bookmarkCard.vm.$emit('modify', bookmark)
+    await wrapper.vm.$nextTick()
+
+    // Submit edit form
+    const editForm = wrapper.findComponent({ name: 'EditBookmarkForm' })
+    await editForm.vm.$emit('submit', 'test-id', { name: 'Updated Bookmark', url: 'https://example.com' })
+    await wrapper.vm.$nextTick()
+
+    expect(updateBookmarkSpy).toHaveBeenCalledWith('test-id', { name: 'Updated Bookmark', url: 'https://example.com' })
+
+    // Form should be hidden after successful submission
+    const formAfterSubmit = wrapper.findComponent({ name: 'EditBookmarkForm' })
+    expect(formAfterSubmit.exists()).toBe(false)
+  })
+
+  it('handles delete from edit form success', async () => {
     const wrapper = mountWithPinia(HomeView)
     const store = useBookmarkStore()
 
@@ -211,33 +255,21 @@ describe('HomeView', () => {
     store.bookmarks = [bookmark]
     await wrapper.vm.$nextTick()
 
+    // Open edit form
     const bookmarkCard = wrapper.findComponent({ name: 'BookmarkCard' })
-    await bookmarkCard.vm.$emit('delete', 'test-id')
+    await bookmarkCard.vm.$emit('modify', bookmark)
+    await wrapper.vm.$nextTick()
+
+    // Delete from edit form
+    const editForm = wrapper.findComponent({ name: 'EditBookmarkForm' })
+    await editForm.vm.$emit('delete', 'test-id')
+    await wrapper.vm.$nextTick()
 
     expect(removeBookmarkSpy).toHaveBeenCalledWith('test-id')
-  })
 
-  it('handles delete bookmark error', async () => {
-    const wrapper = mountWithPinia(HomeView)
-    const store = useBookmarkStore()
-
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const removeBookmarkSpy = vi
-      .spyOn(store, 'removeBookmark')
-      .mockRejectedValue(new Error('Failed to delete bookmark'))
-
-    const bookmark = createBookmark({ id: 'test-id' })
-    store.bookmarks = [bookmark]
-    await wrapper.vm.$nextTick()
-
-    const bookmarkCard = wrapper.findComponent({ name: 'BookmarkCard' })
-    await bookmarkCard.vm.$emit('delete', 'test-id')
-    await wrapper.vm.$nextTick()
-
-    expect(removeBookmarkSpy).toHaveBeenCalled()
-    expect(consoleErrorSpy).toHaveBeenCalled()
-
-    consoleErrorSpy.mockRestore()
+    // Form should be hidden after deletion
+    const formAfterDelete = wrapper.findComponent({ name: 'EditBookmarkForm' })
+    expect(formAfterDelete.exists()).toBe(false)
   })
 
   it('renders ThemeToggle component', () => {

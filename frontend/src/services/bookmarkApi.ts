@@ -1,5 +1,5 @@
 import type { IBookmarkApi } from './bookmarkApi.interface'
-import type { CreateBookmarkDto } from '@/types/bookmark'
+import type { CreateBookmarkDto, UpdateBookmarkDto } from '@/types/bookmark'
 import { MockBookmarkApi } from './bookmarkApi.mock'
 import { HttpBookmarkApi } from './bookmarkApi.http'
 
@@ -56,6 +56,15 @@ class HttpBookmarkApiWithFallback implements IBookmarkApi {
     } catch (error) {
       console.warn('[BookmarkApi] HTTP API failed, falling back to mock API', error)
       return this.mockApi.createBookmark(data)
+    }
+  }
+
+  async updateBookmark(id: string, data: UpdateBookmarkDto) {
+    try {
+      return await this.httpApi.updateBookmark(id, data)
+    } catch (error) {
+      console.warn('[BookmarkApi] HTTP API failed, falling back to mock API', error)
+      return this.mockApi.updateBookmark(id, data)
     }
   }
 

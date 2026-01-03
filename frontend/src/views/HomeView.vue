@@ -3,11 +3,13 @@ import { onMounted, ref } from 'vue'
 import { useBookmarkStore } from '@/stores/bookmark'
 import BookmarkCard from '@/components/BookmarkCard.vue'
 import AddBookmarkForm from '@/components/AddBookmarkForm.vue'
+import EditBookmarkForm from '@/components/EditBookmarkForm.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
-import type { CreateBookmarkDto } from '@/types/bookmark'
+import type { CreateBookmarkDto, UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
 
 const bookmarkStore = useBookmarkStore()
 const showAddForm = ref(false)
+const editingBookmark = ref<Bookmark | null>(null)
 const isDraggingOver = ref(false)
 
 onMounted(() => {
@@ -20,6 +22,28 @@ async function handleAddBookmark(data: CreateBookmarkDto) {
     showAddForm.value = false
   } catch (error) {
     console.error('Failed to add bookmark:', error)
+  }
+}
+
+async function handleModifyBookmark(bookmark: Bookmark) {
+  editingBookmark.value = bookmark
+}
+
+async function handleUpdateBookmark(id: string, data: UpdateBookmarkDto) {
+  try {
+    await bookmarkStore.updateBookmark(id, data)
+    editingBookmark.value = null
+  } catch (error) {
+    console.error('Failed to update bookmark:', error)
+  }
+}
+
+async function handleDeleteFromEditForm(id: string) {
+  try {
+    await bookmarkStore.removeBookmark(id)
+    editingBookmark.value = null
+  } catch (error) {
+    console.error('Failed to delete bookmark:', error)
   }
 }
 
@@ -200,10 +224,17 @@ async function handleDrop(event: DragEvent) {
         v-for="bookmark in bookmarkStore.bookmarks"
         :key="bookmark.id"
         :bookmark="bookmark"
-        @delete="handleDeleteBookmark"
+        @modify="handleModifyBookmark"
       />
     </div>
 
     <AddBookmarkForm v-if="showAddForm" @submit="handleAddBookmark" @cancel="showAddForm = false" />
+    <EditBookmarkForm
+      v-if="editingBookmark"
+      :bookmark="editingBookmark"
+      @submit="handleUpdateBookmark"
+      @delete="handleDeleteFromEditForm"
+      @cancel="editingBookmark = null"
+    />
   </main>
 </template>
