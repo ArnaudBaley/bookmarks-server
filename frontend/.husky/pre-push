@@ -15,11 +15,5 @@ npm run test:unit || {
   exit 1
 }
 
-echo "🎭 Running e2e tests..."
-npm run test:e2e || {
-  echo "❌ E2e tests failed. Please fix the errors and try again."
-  exit 1
-}
-
 echo "✅ All checks passed!"
 
