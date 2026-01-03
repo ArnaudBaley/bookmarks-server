@@ -20,7 +20,7 @@ export function createTestPinia(): Pinia {
  */
 export function mountWithPinia<T extends Component>(
   component: T,
-  options?: MountingOptions<any>
+  options?: MountingOptions<Record<string, unknown>>
 ) {
   const pinia = createTestPinia()
   return mount(component, {
@@ -105,7 +105,7 @@ export function mockLocalStorage() {
 /**
  * Mocks fetch for testing API calls
  */
-export function mockFetch(responseData: any, options?: { ok?: boolean; status?: number }) {
+export function mockFetch(responseData: unknown, options?: { ok?: boolean; status?: number }) {
   const mockResponse = {
     ok: options?.ok ?? true,
     status: options?.status ?? 200,

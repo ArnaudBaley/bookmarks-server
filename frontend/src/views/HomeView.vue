@@ -47,14 +47,6 @@ async function handleDeleteFromEditForm(id: string) {
   }
 }
 
-async function handleDeleteBookmark(id: string) {
-  try {
-    await bookmarkStore.removeBookmark(id)
-  } catch (error) {
-    console.error('Failed to delete bookmark:', error)
-  }
-}
-
 function normalizeUrl(urlString: string): string {
   if (!urlString) return ''
   

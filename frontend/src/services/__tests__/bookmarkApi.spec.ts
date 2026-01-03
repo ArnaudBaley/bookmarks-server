@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { HttpBookmarkApi, MockBookmarkApi } from '../bookmarkApi'
 import { createBookmark, createBookmarkDto } from '@/test-utils'
 import type { IBookmarkApi } from '../bookmarkApi.interface'
+import type { CreateBookmarkDto } from '@/types/bookmark'
 
 // We need to test the HttpBookmarkApiWithFallback class
 // Since it's not exported, we'll recreate it for testing
@@ -23,7 +24,7 @@ class HttpBookmarkApiWithFallback implements IBookmarkApi {
     }
   }
 
-  async createBookmark(data: any) {
+  async createBookmark(data: CreateBookmarkDto) {
     try {
       return await this.httpApi.createBookmark(data)
     } catch (error) {

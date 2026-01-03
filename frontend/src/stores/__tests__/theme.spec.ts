@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createTestPinia } from '@/test-utils'
-import { useThemeStore, type Theme } from '../theme'
-import { mockMatchMedia, mockLocalStorage } from '@/test-utils'
+import { useThemeStore } from '../theme'
+import { mockMatchMedia } from '@/test-utils'
 
 describe('Theme Store', () => {
   beforeEach(() => {
@@ -71,22 +71,18 @@ describe('Theme Store', () => {
     it('applies theme to document', () => {
       const store = useThemeStore()
       store.setTheme('dark')
-      if (typeof document !== 'undefined') {
-        expect(document.documentElement.classList.contains('dark')).toBe(true)
-      }
+      expect(typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false).toBe(true)
     })
 
     it('removes dark class when setting light theme', () => {
       const store = useThemeStore()
       store.setTheme('dark')
-      if (typeof document !== 'undefined') {
-        expect(document.documentElement.classList.contains('dark')).toBe(true)
-      }
+      const hasDarkAfterDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+      expect(hasDarkAfterDark).toBe(true)
 
       store.setTheme('light')
-      if (typeof document !== 'undefined') {
-        expect(document.documentElement.classList.contains('dark')).toBe(false)
-      }
+      const hasDarkAfterLight = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+      expect(hasDarkAfterLight).toBe(false)
     })
 
     it('handles SSR (window undefined)', () => {
@@ -127,14 +123,12 @@ describe('Theme Store', () => {
     it('applies theme to document when toggling', () => {
       const store = useThemeStore()
       store.setTheme('light')
-      if (typeof document !== 'undefined') {
-        expect(document.documentElement.classList.contains('dark')).toBe(false)
-      }
+      const hasDarkBeforeToggle = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+      expect(hasDarkBeforeToggle).toBe(false)
 
       store.toggleTheme()
-      if (typeof document !== 'undefined') {
-        expect(document.documentElement.classList.contains('dark')).toBe(true)
-      }
+      const hasDarkAfterToggle = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : true
+      expect(hasDarkAfterToggle).toBe(true)
     })
   })
 
@@ -142,18 +136,18 @@ describe('Theme Store', () => {
     it('adds dark class for dark theme', () => {
       const store = useThemeStore()
       store.setTheme('dark')
-      if (typeof document !== 'undefined') {
-        expect(document.documentElement.classList.contains('dark')).toBe(true)
-      }
+      const hasDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+      expect(hasDark).toBe(true)
     })
 
     it('removes dark class for light theme', () => {
       if (typeof document !== 'undefined') {
         document.documentElement.classList.add('dark')
-        const store = useThemeStore()
-        store.setTheme('light')
-        expect(document.documentElement.classList.contains('dark')).toBe(false)
       }
+      const store = useThemeStore()
+      store.setTheme('light')
+      const hasDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+      expect(hasDark).toBe(false)
     })
   })
 
@@ -162,24 +156,21 @@ describe('Theme Store', () => {
       const store = useThemeStore()
       store.setTheme('dark')
       // Theme should be applied immediately
-      if (typeof document !== 'undefined') {
-        expect(document.documentElement.classList.contains('dark')).toBe(true)
-      }
+      const hasDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+      expect(hasDark).toBe(true)
     })
 
     it('applies theme when theme value changes', async () => {
       const store = useThemeStore()
       store.setTheme('light')
-      if (typeof document !== 'undefined') {
-        expect(document.documentElement.classList.contains('dark')).toBe(false)
-      }
+      const hasDarkBefore = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+      expect(hasDarkBefore).toBe(false)
 
       store.setTheme('dark')
       // Wait for watcher to run
       await new Promise((resolve) => setTimeout(resolve, 0))
-      if (typeof document !== 'undefined') {
-        expect(document.documentElement.classList.contains('dark')).toBe(true)
-      }
+      const hasDarkAfter = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : true
+      expect(hasDarkAfter).toBe(true)
     })
   })
 

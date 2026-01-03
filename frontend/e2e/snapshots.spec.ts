@@ -8,11 +8,10 @@ test.use({
 test.describe('UI Snapshots', () => {
   test('capture homepage snapshot - light theme', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     
     // Wait for the main content to be visible
-    await page.waitForSelector('h1:has-text("My Bookmarks")', { timeout: 5000 })
-    await page.waitForTimeout(500)
+    await expect(page.getByRole('heading', { name: 'My Bookmarks' })).toBeVisible()
     
     // Capture full page screenshot
     await expect(page).toHaveScreenshot('homepage-light.png', {
@@ -22,15 +21,14 @@ test.describe('UI Snapshots', () => {
 
   test('capture homepage snapshot - dark theme', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     
     // Wait for the main content to be visible
-    await page.waitForSelector('h1:has-text("My Bookmarks")', { timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'My Bookmarks' })).toBeVisible()
     
     // Switch to dark theme
     const themeToggle = page.getByRole('button', { name: /switch to dark theme/i })
     await themeToggle.click()
-    await page.waitForTimeout(500) // Wait for theme transition
     
     // Verify dark theme is applied
     await expect(page.locator('html')).toHaveClass(/dark/)
@@ -43,7 +41,7 @@ test.describe('UI Snapshots', () => {
 
   test('capture homepage with bookmarks - light theme', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     
     // Add some test bookmarks via localStorage (mock API)
     await page.evaluate(() => {
@@ -72,11 +70,10 @@ test.describe('UI Snapshots', () => {
     
     // Reload to show bookmarks
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     
     // Wait for bookmarks to be visible - look for the modify button which indicates a bookmark card
-    await page.waitForSelector('button[aria-label="Modify bookmark"]', { timeout: 5000 })
-    await page.waitForTimeout(500)
+    await expect(page.getByRole('button', { name: /modify bookmark/i })).toBeVisible()
     
     // Capture full page screenshot
     await expect(page).toHaveScreenshot('homepage-with-bookmarks-light.png', {
@@ -86,18 +83,17 @@ test.describe('UI Snapshots', () => {
 
   test('capture add bookmark form - light theme', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     
     // Wait for the main content
-    await page.waitForSelector('h1:has-text("My Bookmarks")', { timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'My Bookmarks' })).toBeVisible()
     
     // Open the add bookmark form
     const addButton = page.getByRole('button', { name: /add new bookmark/i })
     await addButton.click()
     
     // Wait for form to be visible - look for the form heading
-    await page.waitForSelector('h2:has-text("Add New Bookmark")', { timeout: 5000 })
-    await page.waitForTimeout(300)
+    await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeVisible()
     
     // Capture screenshot of the form - use the modal container
     const form = page.locator('div:has-text("Add New Bookmark")').locator('..').first()
@@ -106,15 +102,14 @@ test.describe('UI Snapshots', () => {
 
   test('capture add bookmark form - dark theme', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     
     // Wait for the main content
-    await page.waitForSelector('h1:has-text("My Bookmarks")', { timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'My Bookmarks' })).toBeVisible()
     
     // Switch to dark theme
     const themeToggle = page.getByRole('button', { name: /switch to dark theme/i })
     await themeToggle.click()
-    await page.waitForTimeout(500)
     
     // Verify dark theme is applied
     await expect(page.locator('html')).toHaveClass(/dark/)
@@ -124,8 +119,7 @@ test.describe('UI Snapshots', () => {
     await addButton.click()
     
     // Wait for form to be visible - look for the form heading
-    await page.waitForSelector('h2:has-text("Add New Bookmark")', { timeout: 5000 })
-    await page.waitForTimeout(300)
+    await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeVisible()
     
     // Capture screenshot of the form - use the modal container
     const form = page.locator('div:has-text("Add New Bookmark")').locator('..').first()
@@ -134,7 +128,7 @@ test.describe('UI Snapshots', () => {
 
   test('capture edit bookmark form - light theme', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     
     // Add a test bookmark via localStorage (mock API)
     await page.evaluate(() => {
@@ -151,19 +145,17 @@ test.describe('UI Snapshots', () => {
     
     // Reload to show bookmark
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     
     // Wait for bookmark to be visible
-    await page.waitForSelector('button[aria-label="Modify bookmark"]', { timeout: 5000 })
-    await page.waitForTimeout(300)
+    await expect(page.getByRole('button', { name: /modify bookmark/i })).toBeVisible()
     
     // Click the modify button
     const modifyButton = page.getByRole('button', { name: /modify bookmark/i }).first()
     await modifyButton.click()
     
     // Wait for edit form to be visible - look for the form heading
-    await page.waitForSelector('h2:has-text("Edit Bookmark")', { timeout: 5000 })
-    await page.waitForTimeout(300)
+    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
     
     // Capture screenshot of the form - use the modal container
     const form = page.locator('div:has-text("Edit Bookmark")').locator('..').first()
@@ -172,15 +164,14 @@ test.describe('UI Snapshots', () => {
 
   test('capture edit bookmark form - dark theme', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     
     // Wait for the main content
-    await page.waitForSelector('h1:has-text("My Bookmarks")', { timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'My Bookmarks' })).toBeVisible()
     
     // Switch to dark theme
     const themeToggle = page.getByRole('button', { name: /switch to dark theme/i })
     await themeToggle.click()
-    await page.waitForTimeout(500)
     
     // Verify dark theme is applied
     await expect(page.locator('html')).toHaveClass(/dark/)
@@ -200,19 +191,17 @@ test.describe('UI Snapshots', () => {
     
     // Reload to show bookmark
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     
     // Wait for bookmark to be visible
-    await page.waitForSelector('button[aria-label="Modify bookmark"]', { timeout: 5000 })
-    await page.waitForTimeout(300)
+    await expect(page.getByRole('button', { name: /modify bookmark/i })).toBeVisible()
     
     // Click the modify button
     const modifyButton = page.getByRole('button', { name: /modify bookmark/i }).first()
     await modifyButton.click()
     
     // Wait for edit form to be visible - look for the form heading
-    await page.waitForSelector('h2:has-text("Edit Bookmark")', { timeout: 5000 })
-    await page.waitForTimeout(300)
+    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
     
     // Capture screenshot of the form - use the modal container
     const form = page.locator('div:has-text("Edit Bookmark")').locator('..').first()

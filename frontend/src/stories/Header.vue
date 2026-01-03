@@ -48,6 +48,10 @@
 <script lang="ts" setup>
 import MyButton from './Button.vue';
 
+defineOptions({
+  name: 'StoryHeader'
+})
+
 defineProps<{ user: { name: string } | null }>();
 
 defineEmits<{

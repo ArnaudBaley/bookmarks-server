@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { MockBookmarkApi } from '../bookmarkApi.mock'
-import { createBookmark, createBookmarkDto, createBookmarkArray } from '@/test-utils'
+import { createBookmarkDto } from '@/test-utils'
 
 describe('MockBookmarkApi', () => {
   let api: MockBookmarkApi
@@ -18,8 +18,8 @@ describe('MockBookmarkApi', () => {
     })
 
     it('returns stored bookmarks', async () => {
-      const bookmark1 = await api.createBookmark(createBookmarkDto({ name: 'Bookmark 1' }))
-      const bookmark2 = await api.createBookmark(createBookmarkDto({ name: 'Bookmark 2' }))
+      await api.createBookmark(createBookmarkDto({ name: 'Bookmark 1' }))
+      await api.createBookmark(createBookmarkDto({ name: 'Bookmark 2' }))
 
       const result = await api.getAllBookmarks()
 
@@ -163,7 +163,9 @@ describe('MockBookmarkApi', () => {
       global.window = undefined
 
       // Should not throw
-      api.clearStorage()
+      expect(() => {
+        api.clearStorage()
+      }).not.toThrow()
 
       global.window = originalWindow
     })
@@ -181,28 +183,24 @@ describe('MockBookmarkApi', () => {
       expect(result[0].name).toBe('Persisted')
     })
 
-    it('handles corrupted localStorage data gracefully', () => {
+    it('handles corrupted localStorage data gracefully', async () => {
       localStorage.setItem('bookmarks-mock-data', 'invalid json')
 
       // Should not throw, but return empty array
       const api = new MockBookmarkApi()
       // Accessing getStorage internally would fail, but getAllBookmarks should handle it
       // Since getStorage is private, we test through getAllBookmarks
-      expect(async () => {
-        await api.getAllBookmarks()
-      }).not.toThrow()
+      await expect(api.getAllBookmarks()).resolves.toEqual([])
     })
 
-    it('handles SSR (window undefined)', () => {
+    it('handles SSR (window undefined)', async () => {
       const originalWindow = global.window
       // @ts-expect-error - Testing SSR scenario
       global.window = undefined
 
       const api = new MockBookmarkApi()
       // Should not throw
-      expect(async () => {
-        await api.getAllBookmarks()
-      }).not.toThrow()
+      await expect(api.getAllBookmarks()).resolves.toEqual([])
 
       global.window = originalWindow
     })
@@ -224,7 +222,7 @@ describe('MockBookmarkApi', () => {
 
     it('maintains data integrity during concurrent operations', async () => {
       const bookmark1 = await api.createBookmark(createBookmarkDto({ name: 'Bookmark 1' }))
-      const bookmark2 = await api.createBookmark(createBookmarkDto({ name: 'Bookmark 2' }))
+      await api.createBookmark(createBookmarkDto({ name: 'Bookmark 2' }))
 
       // Concurrent delete and create
       await Promise.all([

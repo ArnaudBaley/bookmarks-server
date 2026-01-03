@@ -20,7 +20,9 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue';
+defineOptions({
+  name: 'StoryButton'
+})
 
 const props = withDefaults(
   defineProps<{

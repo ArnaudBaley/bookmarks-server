@@ -68,6 +68,10 @@ import { ref } from 'vue';
 
 import MyHeader from './Header.vue';
 
+defineOptions({
+  name: 'StoryPage'
+})
+
 const user = ref<{ name: string } | null>(null);
 
 const onLogin = () => {

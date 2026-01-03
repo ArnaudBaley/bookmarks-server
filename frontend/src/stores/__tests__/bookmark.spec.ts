@@ -3,6 +3,7 @@ import { createTestPinia } from '@/test-utils'
 import { useBookmarkStore } from '../bookmark'
 import { createBookmark, createBookmarkArray, createBookmarkDto } from '@/test-utils'
 import * as bookmarkApiModule from '@/services/bookmarkApi'
+import type { Bookmark } from '@/types/bookmark'
 
 describe('Bookmark Store', () => {
   let store: ReturnType<typeof useBookmarkStore>
@@ -57,11 +58,11 @@ describe('Bookmark Store', () => {
     })
 
     it('sets loading to true during fetch', async () => {
-      let resolvePromise: (value: any) => void
-      const promise = new Promise((resolve) => {
+      let resolvePromise: (value: Bookmark[]) => void
+      const promise = new Promise<Bookmark[]>((resolve) => {
         resolvePromise = resolve
       })
-      vi.spyOn(bookmarkApiModule.bookmarkApi, 'getAllBookmarks').mockReturnValue(promise as any)
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'getAllBookmarks').mockReturnValue(promise)
 
       const fetchPromise = store.fetchBookmarks()
       expect(store.loading).toBe(true)
@@ -121,12 +122,12 @@ describe('Bookmark Store', () => {
     })
 
     it('sets loading to true during add', async () => {
-      let resolvePromise: (value: any) => void
-      const promise = new Promise((resolve) => {
+      let resolvePromise: (value: Bookmark) => void
+      const promise = new Promise<Bookmark>((resolve) => {
         resolvePromise = resolve
       })
       const bookmarkDto = createBookmarkDto()
-      vi.spyOn(bookmarkApiModule.bookmarkApi, 'createBookmark').mockReturnValue(promise as any)
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'createBookmark').mockReturnValue(promise)
 
       const addPromise = store.addBookmark(bookmarkDto)
       expect(store.loading).toBe(true)
@@ -196,7 +197,7 @@ describe('Bookmark Store', () => {
       const promise = new Promise<void>((resolve) => {
         resolvePromise = resolve
       })
-      vi.spyOn(bookmarkApiModule.bookmarkApi, 'deleteBookmark').mockReturnValue(promise as any)
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'deleteBookmark').mockReturnValue(promise)
 
       const removePromise = store.removeBookmark('id-1')
       expect(store.loading).toBe(true)

@@ -11,7 +11,14 @@ export class MockBookmarkApi implements IBookmarkApi {
   private getStorage(): Bookmark[] {
     if (typeof window === 'undefined') return []
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored ? JSON.parse(stored) : []
+    if (!stored) return []
+    try {
+      return JSON.parse(stored)
+    } catch {
+      // If JSON is corrupted, clear it and return empty array
+      localStorage.removeItem(STORAGE_KEY)
+      return []
+    }
   }
 
   private setStorage(bookmarks: Bookmark[]): void {
