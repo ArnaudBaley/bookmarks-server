@@ -39,3 +39,39 @@
 - Golden test using playwright snapshots
 
 - Storybook to have a catalog of components and to manually test them
+
+
+## Deployment
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+
+### Development Environment
+
+**Quick Start:**
+```bash
+cd deploy
+./deploy-dev.sh
+```
+
+The application will be available at `http://localhost:5173`
+
+
+### Production Environment
+
+The production environment builds the application and serves it with nginx.
+
+```bash
+cd deploy
+./deploy-prod.sh
+```
+
+The application will be available at `http://localhost:8080`
+
+
+## Environments variables
+
+- `VITE_API_BASE_URL`: Backend API URL (default: `http://localhost:3000`)
+- `VITE_USE_MOCK_API`: Force mock API mode (default: `false`)
+- `FRONTEND_PORT`: Production port mapping (default: `8080`)

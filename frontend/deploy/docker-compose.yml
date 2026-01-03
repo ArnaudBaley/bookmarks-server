@@ -1,0 +1,37 @@
+version: '3.8'
+
+name: bookmarks-frontend-dev
+
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.dev
+    container_name: bookmarks-frontend-dev
+    ports:
+      - "5173:5173"
+    volumes:
+      # Mount source code for hot-reload
+      - ../src:/app/src
+      - ../public:/app/public
+      - ../index.html:/app/index.html
+      - ../vite.config.ts:/app/vite.config.ts
+      - ../tsconfig.json:/app/tsconfig.json
+      - ../tsconfig.app.json:/app/tsconfig.app.json
+      - ../tailwind.config.ts:/app/tailwind.config.ts
+      - ../postcss.config.js:/app/postcss.config.js
+      # Exclude node_modules from volume mount (use container's)
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:3000}
+      - VITE_USE_MOCK_API=${VITE_USE_MOCK_API:-false}
+    networks:
+      - bookmarks-network-dev
+    restart: unless-stopped
+
+networks:
+  bookmarks-network-dev:
+    driver: bridge
+    name: bookmarks-network-dev
+
+
