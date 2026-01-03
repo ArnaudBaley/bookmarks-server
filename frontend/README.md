@@ -23,6 +23,8 @@
 
 - An icon "+" at the top of the page allow to create a new card (display a form)
 
+- Drag and drop: Users can drag a URL from any browser's address bar or a link on a webpage and drop it anywhere on the bookmarks page to automatically create a new bookmark card.
+
 
 
 ## Theme
