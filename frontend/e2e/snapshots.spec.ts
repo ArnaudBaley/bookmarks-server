@@ -74,8 +74,8 @@ test.describe('UI Snapshots', () => {
     await page.reload()
     await page.waitForLoadState('networkidle')
     
-    // Wait for bookmarks to be visible
-    await page.waitForSelector('.bookmark-card', { timeout: 5000 })
+    // Wait for bookmarks to be visible - look for the modify button which indicates a bookmark card
+    await page.waitForSelector('button[aria-label="Modify bookmark"]', { timeout: 5000 })
     await page.waitForTimeout(500)
     
     // Capture full page screenshot
@@ -95,12 +95,12 @@ test.describe('UI Snapshots', () => {
     const addButton = page.getByRole('button', { name: /add new bookmark/i })
     await addButton.click()
     
-    // Wait for form to be visible
-    await page.waitForSelector('.form-container', { timeout: 5000 })
+    // Wait for form to be visible - look for the form heading
+    await page.waitForSelector('h2:has-text("Add New Bookmark")', { timeout: 5000 })
     await page.waitForTimeout(300)
     
-    // Capture screenshot of the form
-    const form = page.locator('.form-container')
+    // Capture screenshot of the form - use the modal container
+    const form = page.locator('div:has-text("Add New Bookmark")').locator('..').first()
     await expect(form).toHaveScreenshot('add-bookmark-form-light.png')
   })
 
@@ -123,13 +123,100 @@ test.describe('UI Snapshots', () => {
     const addButton = page.getByRole('button', { name: /add new bookmark/i })
     await addButton.click()
     
-    // Wait for form to be visible
-    await page.waitForSelector('.form-container', { timeout: 5000 })
+    // Wait for form to be visible - look for the form heading
+    await page.waitForSelector('h2:has-text("Add New Bookmark")', { timeout: 5000 })
     await page.waitForTimeout(300)
     
-    // Capture screenshot of the form
-    const form = page.locator('.form-container')
+    // Capture screenshot of the form - use the modal container
+    const form = page.locator('div:has-text("Add New Bookmark")').locator('..').first()
     await expect(form).toHaveScreenshot('add-bookmark-form-dark.png')
+  })
+
+  test('capture edit bookmark form - light theme', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+    
+    // Add a test bookmark via localStorage (mock API)
+    await page.evaluate(() => {
+      const bookmarks = [
+        {
+          id: '1',
+          name: 'Vue.js',
+          url: 'https://vuejs.org',
+          createdAt: new Date().toISOString(),
+        },
+      ]
+      localStorage.setItem('bookmarks-mock-data', JSON.stringify(bookmarks))
+    })
+    
+    // Reload to show bookmark
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+    
+    // Wait for bookmark to be visible
+    await page.waitForSelector('button[aria-label="Modify bookmark"]', { timeout: 5000 })
+    await page.waitForTimeout(300)
+    
+    // Click the modify button
+    const modifyButton = page.getByRole('button', { name: /modify bookmark/i }).first()
+    await modifyButton.click()
+    
+    // Wait for edit form to be visible - look for the form heading
+    await page.waitForSelector('h2:has-text("Edit Bookmark")', { timeout: 5000 })
+    await page.waitForTimeout(300)
+    
+    // Capture screenshot of the form - use the modal container
+    const form = page.locator('div:has-text("Edit Bookmark")').locator('..').first()
+    await expect(form).toHaveScreenshot('edit-bookmark-form-light.png')
+  })
+
+  test('capture edit bookmark form - dark theme', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+    
+    // Wait for the main content
+    await page.waitForSelector('h1:has-text("My Bookmarks")', { timeout: 5000 })
+    
+    // Switch to dark theme
+    const themeToggle = page.getByRole('button', { name: /switch to dark theme/i })
+    await themeToggle.click()
+    await page.waitForTimeout(500)
+    
+    // Verify dark theme is applied
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    
+    // Add a test bookmark via localStorage (mock API)
+    await page.evaluate(() => {
+      const bookmarks = [
+        {
+          id: '1',
+          name: 'Vue.js',
+          url: 'https://vuejs.org',
+          createdAt: new Date().toISOString(),
+        },
+      ]
+      localStorage.setItem('bookmarks-mock-data', JSON.stringify(bookmarks))
+    })
+    
+    // Reload to show bookmark
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+    
+    // Wait for bookmark to be visible
+    await page.waitForSelector('button[aria-label="Modify bookmark"]', { timeout: 5000 })
+    await page.waitForTimeout(300)
+    
+    // Click the modify button
+    const modifyButton = page.getByRole('button', { name: /modify bookmark/i }).first()
+    await modifyButton.click()
+    
+    // Wait for edit form to be visible - look for the form heading
+    await page.waitForSelector('h2:has-text("Edit Bookmark")', { timeout: 5000 })
+    await page.waitForTimeout(300)
+    
+    // Capture screenshot of the form - use the modal container
+    const form = page.locator('div:has-text("Edit Bookmark")').locator('..').first()
+    await expect(form).toHaveScreenshot('edit-bookmark-form-dark.png')
   })
 })
 
