@@ -20,6 +20,7 @@ const showAddGroupForm = ref(false)
 const editingBookmark = ref<Bookmark | null>(null)
 const editingGroup = ref<Group | null>(null)
 const isDragOverUngrouped = ref(false)
+const isUngroupedExpanded = ref(true)
 
 const ungroupedBookmarks = computed(() => groupStore.getUngroupedBookmarks())
 
@@ -355,29 +356,62 @@ async function handleUngroupedDrop(event: DragEvent) {
     <div v-else>
       <!-- Ungrouped Bookmarks -->
       <div
-        class="mb-6"
+        class="mb-6 transition-all duration-200"
         :class="{ 'ring-2 ring-offset-2 ring-blue-500': isDragOverUngrouped }"
         @dragover="handleUngroupedDragOver"
         @dragleave="handleUngroupedDragLeave"
         @drop="handleUngroupedDrop"
       >
-        <div class="flex items-center gap-3 mb-4">
-          <h2 class="m-0 text-xl font-semibold text-[var(--color-text)]">Ungrouped</h2>
-          <span class="text-sm text-[var(--color-text)] opacity-60">
-            ({{ ungroupedBookmarks.length }})
-          </span>
+        <div
+          class="flex items-center justify-between p-4 cursor-pointer transition-colors duration-200"
+          @click="isUngroupedExpanded = !isUngroupedExpanded"
+        >
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <h2 class="m-0 text-xl font-semibold text-[var(--color-text)]">Ungrouped</h2>
+            <span class="text-sm text-[var(--color-text)] opacity-60">
+              ({{ ungroupedBookmarks.length }})
+            </span>
+          </div>
+          <button
+            class="p-1.5 opacity-60 hover:opacity-100 flex-shrink-0 rounded cursor-pointer transition-transform duration-200 text-[var(--color-text)]"
+            :class="{ 'rotate-180': isUngroupedExpanded }"
+            @click.stop="isUngroupedExpanded = !isUngroupedExpanded"
+            aria-label="Toggle ungrouped section"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
         </div>
-        <div v-if="ungroupedBookmarks.length > 0" class="grid grid-cols-[repeat(auto-fill,minmax(288px,1fr))] gap-3">
-          <BookmarkCard
-            v-for="bookmark in ungroupedBookmarks"
-            :key="bookmark.id"
-            :bookmark="bookmark"
-            @modify="handleModifyBookmark"
-          />
-        </div>
-        <div v-else class="text-center py-8 text-[var(--color-text)] opacity-60">
-          <p class="m-0">No ungrouped bookmarks</p>
-          <p class="m-0 mt-2 text-sm">Drag and drop bookmarks here to ungroup them</p>
+        <div
+          v-show="isUngroupedExpanded"
+          class="p-4 pt-0"
+          @dragover="handleUngroupedDragOver"
+          @dragleave="handleUngroupedDragLeave"
+          @drop="handleUngroupedDrop"
+        >
+          <div v-if="ungroupedBookmarks.length > 0" class="grid grid-cols-[repeat(auto-fill,minmax(288px,1fr))] gap-3">
+            <BookmarkCard
+              v-for="bookmark in ungroupedBookmarks"
+              :key="bookmark.id"
+              :bookmark="bookmark"
+              @modify="handleModifyBookmark"
+            />
+          </div>
+          <div v-else class="text-center py-8 text-[var(--color-text)] opacity-60">
+            <p class="m-0">No ungrouped bookmarks</p>
+            <p class="m-0 mt-2 text-sm">Drag and drop bookmarks here to ungroup them</p>
+          </div>
         </div>
       </div>
 
