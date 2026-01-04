@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import type { UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
 import { useGroupStore } from '@/stores/group'
 
@@ -22,6 +22,7 @@ const name = ref('')
 const url = ref('')
 const selectedGroupIds = ref<string[]>([])
 const error = ref<string | null>(null)
+const nameInputRef = ref<HTMLInputElement | null>(null)
 
 function handleEscapeKey(event: KeyboardEvent) {
   if (event.key === 'Escape') {
@@ -29,11 +30,13 @@ function handleEscapeKey(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   name.value = props.bookmark.name
   url.value = props.bookmark.url
   selectedGroupIds.value = props.bookmark.groupIds ? [...props.bookmark.groupIds] : []
   window.addEventListener('keydown', handleEscapeKey)
+  await nextTick()
+  nameInputRef.value?.focus()
 })
 
 onUnmounted(() => {
@@ -151,12 +154,12 @@ const availableGroups = computed(() => groupStore.groups)
             Name
           </label>
           <input
+            ref="nameInputRef"
             id="bookmark-name"
             v-model="name"
             type="text"
             placeholder="Enter bookmark name"
             required
-            autofocus
             class="w-full px-3 py-3 border border-[var(--color-border)] rounded text-base bg-[var(--color-background-soft)] text-[var(--color-text)] box-border focus:outline focus:outline-2 focus:outline-[var(--color-text)] focus:outline-offset-2"
           />
         </div>

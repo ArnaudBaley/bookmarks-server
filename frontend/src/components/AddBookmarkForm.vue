@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import type { CreateBookmarkDto } from '@/types/bookmark'
 
 interface Emits {
@@ -12,6 +12,7 @@ const emit = defineEmits<Emits>()
 const name = ref('')
 const url = ref('')
 const error = ref<string | null>(null)
+const nameInputRef = ref<HTMLInputElement | null>(null)
 
 function handleEscapeKey(event: KeyboardEvent) {
   if (event.key === 'Escape') {
@@ -19,8 +20,10 @@ function handleEscapeKey(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('keydown', handleEscapeKey)
+  await nextTick()
+  nameInputRef.value?.focus()
 })
 
 onUnmounted(() => {
@@ -100,12 +103,12 @@ function handleCancel() {
             Name
           </label>
           <input
+            ref="nameInputRef"
             id="bookmark-name"
             v-model="name"
             type="text"
             placeholder="Enter bookmark name"
             required
-            autofocus
             class="w-full px-3 py-3 border border-[var(--color-border)] rounded text-base bg-[var(--color-background-soft)] text-[var(--color-text)] box-border focus:outline focus:outline-2 focus:outline-[var(--color-text)] focus:outline-offset-2"
           />
         </div>
