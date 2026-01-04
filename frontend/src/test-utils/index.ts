@@ -3,6 +3,7 @@ import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import type { Component } from 'vue'
 import { vi } from 'vitest'
 import type { Bookmark, CreateBookmarkDto } from '@/types/bookmark'
+import type { Group, CreateGroupDto } from '@/types/group'
 
 /**
  * Creates a fresh Pinia instance for testing
@@ -142,5 +143,43 @@ export function mockMatchMedia(matches: boolean) {
  */
 export async function waitForNextTick() {
   await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+/**
+ * Test data factory for creating group objects
+ */
+export function createGroup(overrides?: Partial<Group>): Group {
+  return {
+    id: 'test-group-id-1',
+    name: 'Test Group',
+    color: '#3b82f6',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+  }
+}
+
+/**
+ * Test data factory for creating CreateGroupDto objects
+ */
+export function createGroupDto(overrides?: Partial<CreateGroupDto>): CreateGroupDto {
+  return {
+    name: 'Test Group',
+    color: '#3b82f6',
+    ...overrides,
+  }
+}
+
+/**
+ * Creates an array of test groups
+ */
+export function createGroupArray(count: number): Group[] {
+  return Array.from({ length: count }, (_, i) =>
+    createGroup({
+      id: `test-group-id-${i + 1}`,
+      name: `Test Group ${i + 1}`,
+      color: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'][i % 4],
+    })
+  )
 }
 

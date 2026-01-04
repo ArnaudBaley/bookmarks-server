@@ -12,6 +12,8 @@
     "preview": "vite preview",
     "test:unit": "vitest",
     "test:unit:coverage": "vitest --coverage",
+    "test:e2e": "playwright test e2e/features.spec.ts",
+    "test:e2e:headed": "playwright test --headed e2e/features.spec.ts",
     "test:e2e:take-snapshots": "playwright test e2e/snapshots.spec.ts --update-snapshots",
     "test:e2e:check-snapshots": "playwright test e2e/snapshots.spec.ts",
     "build-only": "vite build",
