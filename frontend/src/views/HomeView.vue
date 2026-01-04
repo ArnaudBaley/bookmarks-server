@@ -98,10 +98,15 @@ async function handleBookmarkDrop(groupId: string, bookmarkId: string) {
     const currentGroupIds = bookmark.groupIds || []
     
     if (currentGroupIds.includes(groupId)) {
-      // Already in group, remove it
+      // Already in group, remove it (toggle behavior)
       await groupStore.removeBookmarkFromGroup(groupId, bookmarkId)
     } else {
-      // Add to group
+      // Move to new group: remove from all current groups first, then add to target group
+      const groupIdsToRemove = [...currentGroupIds]
+      for (const oldGroupId of groupIdsToRemove) {
+        await groupStore.removeBookmarkFromGroup(oldGroupId, bookmarkId)
+      }
+      // Add to the target group
       await groupStore.addBookmarkToGroup(groupId, bookmarkId)
     }
   } catch (error) {
@@ -109,16 +114,73 @@ async function handleBookmarkDrop(groupId: string, bookmarkId: string) {
   }
 }
 
+function normalizeUrl(urlString: string): string {
+  if (!urlString) return ''
+  
+  // Add protocol if missing
+  if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+    return `https://${urlString}`
+  }
+  return urlString
+}
+
+function validateUrl(urlString: string): boolean {
+  try {
+    const urlObj = new URL(urlString)
+    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function extractNameFromUrl(urlString: string): string {
+  try {
+    const urlObj = new URL(urlString)
+    // Use hostname without www prefix
+    const hostname = urlObj.hostname.replace(/^www\./, '')
+    // Capitalize first letter and remove TLD for cleaner name
+    const domainPart = hostname.split('.')[0]
+    if (domainPart) {
+      return domainPart.charAt(0).toUpperCase() + domainPart.slice(1)
+    }
+    return hostname
+  } catch {
+    // Fallback to URL if parsing fails
+    return urlString.length > 50 ? urlString.substring(0, 50) + '...' : urlString
+  }
+}
+
 function handleUngroupedDragOver(event: DragEvent) {
   event.preventDefault()
   event.stopPropagation()
+  if (event.dataTransfer) {
+    // Check if it's a bookmark drag (effectAllowed is 'move' for bookmarks)
+    // or if it has URL-specific types (browsers set these for URL drags)
+    const hasUrlTypes = event.dataTransfer.types.includes('text/uri-list') || 
+                        event.dataTransfer.types.includes('URL') ||
+                        event.dataTransfer.types.includes('text/html')
+    
+    // If effectAllowed is 'move', it's a bookmark drag
+    // Otherwise, if it has URL types, it's a URL drag
+    if (event.dataTransfer.effectAllowed === 'move' && !hasUrlTypes) {
+      event.dataTransfer.dropEffect = 'move'
+    } else {
+      event.dataTransfer.dropEffect = 'copy'
+    }
+  }
   isDragOverUngrouped.value = true
 }
 
 function handleUngroupedDragLeave(event: DragEvent) {
   event.preventDefault()
   event.stopPropagation()
-  isDragOverUngrouped.value = false
+  // Check if we're actually leaving the main element (not just moving to a child)
+  const target = event.target as HTMLElement
+  const relatedTarget = event.relatedTarget as HTMLElement | null
+  
+  if (!relatedTarget || !target.contains(relatedTarget)) {
+    isDragOverUngrouped.value = false
+  }
 }
 
 async function handleUngroupedDrop(event: DragEvent) {
@@ -126,20 +188,87 @@ async function handleUngroupedDrop(event: DragEvent) {
   event.stopPropagation()
   isDragOverUngrouped.value = false
 
-  const bookmarkId = event.dataTransfer?.getData('text/plain')
-  if (!bookmarkId) return
+  if (!event.dataTransfer) return
+
+  // Get all possible data types
+  const textPlain = event.dataTransfer.getData('text/plain')
+  const uriList = event.dataTransfer.getData('text/uri-list')
+  const urlData = event.dataTransfer.getData('URL')
+  const htmlData = event.dataTransfer.getData('text/html')
+
+  // First, check if text/plain is a bookmark ID (existing bookmark being moved)
+  if (textPlain) {
+    const bookmark = bookmarkStore.bookmarks.find((b) => b.id === textPlain)
+    if (bookmark) {
+      // It's a bookmark drag - remove from all groups
+      try {
+        const groupIds = bookmark.groupIds || []
+        if (groupIds.length > 0) {
+          for (const groupId of groupIds) {
+            await groupStore.removeBookmarkFromGroup(groupId, textPlain)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to remove bookmark from groups:', error)
+      }
+      return
+    }
+  }
+
+  // If not a bookmark ID, check for URL data
+  // Check for URL-specific data types (browsers set these when dragging URLs)
+  let url: string | undefined = uriList || urlData
+
+  // If we got HTML, try to extract URL from href attribute
+  if (htmlData && htmlData.includes('<a') && htmlData.includes('href=')) {
+    const hrefMatch = htmlData.match(/href=["']([^"']+)["']/i)
+    if (hrefMatch && hrefMatch[1]) {
+      url = hrefMatch[1]
+    }
+  }
+
+  // Fallback to text/plain if no URL found yet (and it's not a bookmark ID)
+  if (!url && textPlain) {
+    url = textPlain
+  }
+
+  // Clean up the URL (remove newlines, trim, decode HTML entities)
+  if (!url) return
+  
+  url = url.trim().split('\n')[0]?.split('\r')[0] || url.trim()
+  
+  // Decode HTML entities if present
+  if (url && url.includes('&')) {
+    const textarea = document.createElement('textarea')
+    textarea.innerHTML = url
+    const decodedUrl = textarea.value
+    if (decodedUrl) {
+      url = decodedUrl
+    }
+  }
+
+  if (!url) return
+
+  // Normalize and validate URL
+  const normalizedUrl = normalizeUrl(url)
+  
+  if (!validateUrl(normalizedUrl)) {
+    // Not a valid URL, ignore
+    console.error('Invalid URL dropped:', url)
+    return
+  }
+
+  // It's a valid URL - create a new bookmark without any groups (ungrouped)
+  const name = extractNameFromUrl(normalizedUrl)
 
   try {
-    const bookmark = bookmarkStore.bookmarks.find((b) => b.id === bookmarkId)
-    if (!bookmark || !bookmark.groupIds || bookmark.groupIds.length === 0) return
-
-    // Remove from all groups
-    const groupIds = [...bookmark.groupIds]
-    for (const groupId of groupIds) {
-      await groupStore.removeBookmarkFromGroup(groupId, bookmarkId)
-    }
+    await bookmarkStore.addBookmark({
+      name,
+      url: normalizedUrl,
+      groupIds: [],
+    })
   } catch (error) {
-    console.error('Failed to remove bookmark from groups:', error)
+    console.error('Failed to add bookmark:', error)
   }
 }
 </script>
@@ -224,22 +353,8 @@ async function handleUngroupedDrop(event: DragEvent) {
     </div>
 
     <div v-else>
-      <!-- Groups -->
-      <div v-if="groupStore.groups.length > 0">
-        <GroupCard
-          v-for="group in groupStore.groups"
-          :key="group.id"
-          :group="group"
-          :bookmarks="groupStore.getBookmarksByGroup(group.id)"
-          @modify="handleModifyGroup"
-          @bookmark-drop="handleBookmarkDrop"
-          @bookmark-modify="handleModifyBookmark"
-        />
-      </div>
-
       <!-- Ungrouped Bookmarks -->
       <div
-        v-if="ungroupedBookmarks.length > 0"
         class="mb-6"
         :class="{ 'ring-2 ring-offset-2 ring-blue-500': isDragOverUngrouped }"
         @dragover="handleUngroupedDragOver"
@@ -252,7 +367,7 @@ async function handleUngroupedDrop(event: DragEvent) {
             ({{ ungroupedBookmarks.length }})
           </span>
         </div>
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(288px,1fr))] gap-3">
+        <div v-if="ungroupedBookmarks.length > 0" class="grid grid-cols-[repeat(auto-fill,minmax(288px,1fr))] gap-3">
           <BookmarkCard
             v-for="bookmark in ungroupedBookmarks"
             :key="bookmark.id"
@@ -260,14 +375,23 @@ async function handleUngroupedDrop(event: DragEvent) {
             @modify="handleModifyBookmark"
           />
         </div>
+        <div v-else class="text-center py-8 text-[var(--color-text)] opacity-60">
+          <p class="m-0">No ungrouped bookmarks</p>
+          <p class="m-0 mt-2 text-sm">Drag and drop bookmarks here to ungroup them</p>
+        </div>
       </div>
 
-      <!-- Empty state when no groups and no ungrouped bookmarks -->
-      <div
-        v-if="groupStore.groups.length === 0 && ungroupedBookmarks.length === 0 && bookmarkStore.bookmarks.length > 0"
-        class="text-center py-12 text-[var(--color-text)]"
-      >
-        <p>All bookmarks are organized in groups.</p>
+      <!-- Groups -->
+      <div v-if="groupStore.groups.length > 0">
+        <GroupCard
+          v-for="group in groupStore.groups"
+          :key="group.id"
+          :group="group"
+          :bookmarks="groupStore.getBookmarksByGroup(group.id)"
+          @modify="handleModifyGroup"
+          @bookmark-drop="handleBookmarkDrop"
+          @bookmark-modify="handleModifyBookmark"
+        />
       </div>
     </div>
 
