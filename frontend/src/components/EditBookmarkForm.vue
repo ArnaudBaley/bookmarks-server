@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import type { UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
 import { useGroupStore } from '@/stores/group'
 
@@ -23,10 +23,21 @@ const url = ref('')
 const selectedGroupIds = ref<string[]>([])
 const error = ref<string | null>(null)
 
+function handleEscapeKey(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    handleCancel()
+  }
+}
+
 onMounted(() => {
   name.value = props.bookmark.name
   url.value = props.bookmark.url
   selectedGroupIds.value = props.bookmark.groupIds ? [...props.bookmark.groupIds] : []
+  window.addEventListener('keydown', handleEscapeKey)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscapeKey)
 })
 
 function validateUrl(urlString: string): boolean {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import type { CreateBookmarkDto } from '@/types/bookmark'
 
 interface Emits {
@@ -12,6 +12,20 @@ const emit = defineEmits<Emits>()
 const name = ref('')
 const url = ref('')
 const error = ref<string | null>(null)
+
+function handleEscapeKey(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    handleCancel()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleEscapeKey)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscapeKey)
+})
 
 function validateUrl(urlString: string): boolean {
   try {

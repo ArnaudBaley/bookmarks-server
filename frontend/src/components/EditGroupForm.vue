@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import type { UpdateGroupDto, Group } from '@/types/group'
 
 interface Props {
@@ -19,6 +19,12 @@ const name = ref('')
 const color = ref('#3b82f6')
 const error = ref<string | null>(null)
 
+function handleEscapeKey(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    handleCancel()
+  }
+}
+
 // Predefined color palette
 const colorPalette = [
   '#3b82f6', // blue
@@ -34,6 +40,11 @@ const colorPalette = [
 onMounted(() => {
   name.value = props.group.name
   color.value = props.group.color
+  window.addEventListener('keydown', handleEscapeKey)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscapeKey)
 })
 
 function handleSubmit() {

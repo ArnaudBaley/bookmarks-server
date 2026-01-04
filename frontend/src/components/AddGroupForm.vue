@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import type { CreateGroupDto } from '@/types/group'
 
 interface Emits {
@@ -12,6 +12,20 @@ const emit = defineEmits<Emits>()
 const name = ref('')
 const color = ref('#3b82f6')
 const error = ref<string | null>(null)
+
+function handleEscapeKey(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    handleCancel()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleEscapeKey)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscapeKey)
+})
 
 // Predefined color palette
 const colorPalette = [
