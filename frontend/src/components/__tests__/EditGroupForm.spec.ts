@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import EditGroupForm from '../EditGroupForm.vue'
-import { createGroup, createGroupDto } from '@/test-utils'
+import { createGroup } from '@/test-utils'
 
 describe('EditGroupForm', () => {
   beforeEach(() => {

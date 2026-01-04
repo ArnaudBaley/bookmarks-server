@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { MockGroupApi } from '../groupApi.mock'
-import { createGroup, createGroupDto, createBookmark } from '@/test-utils'
+import { createGroupDto, createBookmark } from '@/test-utils'
 
 describe('MockGroupApi', () => {
   let api: MockGroupApi
@@ -19,8 +19,8 @@ describe('MockGroupApi', () => {
     })
 
     it('returns stored groups', async () => {
-      const group1 = await api.createGroup(createGroupDto({ name: 'Group 1' }))
-      const group2 = await api.createGroup(createGroupDto({ name: 'Group 2' }))
+      await api.createGroup(createGroupDto({ name: 'Group 1' }))
+      await api.createGroup(createGroupDto({ name: 'Group 2' }))
 
       const result = await api.getAllGroups()
 
@@ -39,7 +39,7 @@ describe('MockGroupApi', () => {
     })
 
     it('persists data in localStorage', async () => {
-      const group = await api.createGroup(createGroupDto({ name: 'Persisted Group' }))
+      await api.createGroup(createGroupDto({ name: 'Persisted Group' }))
 
       // Create new instance to verify persistence
       const newApi = new MockGroupApi()
@@ -274,7 +274,7 @@ describe('MockGroupApi', () => {
 
   describe('localStorage persistence', () => {
     it('persists across API instances', async () => {
-      const group = await api.createGroup(createGroupDto({ name: 'Persisted' }))
+      await api.createGroup(createGroupDto({ name: 'Persisted' }))
 
       const newApi = new MockGroupApi()
       const result = await newApi.getAllGroups()

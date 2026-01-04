@@ -244,7 +244,8 @@ describe('ExportImportModal', () => {
       const callbacks = {
         onload: null as ((e: { target: { result: string } }) => void) | null,
         onerror: null as (() => void) | null,
-        readAsTextImpl: (file: File) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        readAsTextImpl: (_file: File) => {
           // Simulate error by calling onerror callback
           setTimeout(() => {
             if (callbacks.onerror) {
@@ -291,7 +292,8 @@ describe('ExportImportModal', () => {
       const callbacks = {
         onload: null as ((e: { target: { result: string } }) => void) | null,
         onerror: null as (() => void) | null,
-        readAsTextImpl: (file: File) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        readAsTextImpl: (_file: File) => {
           // Simulate success by calling onload callback
           setTimeout(() => {
             if (callbacks.onload) {
@@ -337,7 +339,8 @@ describe('ExportImportModal', () => {
       const callbacks = {
         onload: null as ((e: { target: { result: string } }) => void) | null,
         onerror: null as (() => void) | null,
-        readAsTextImpl: (file: File) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        readAsTextImpl: (_file: File) => {
           // Simulate success by calling onload callback
           setTimeout(() => {
             if (callbacks.onload) {
@@ -384,7 +387,8 @@ describe('ExportImportModal', () => {
       const callbacks = {
         onload: null as ((e: { target: { result: string } }) => void) | null,
         onerror: null as (() => void) | null,
-        readAsTextImpl: (file: File) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        readAsTextImpl: (_file: File) => {
           // Simulate success by calling onload callback
           setTimeout(() => {
             if (callbacks.onload) {
@@ -412,13 +416,12 @@ describe('ExportImportModal', () => {
 
       // Find cancel button in confirmation dialog
       const cancelButton = wrapper.findAll('button').find((btn) => btn.text() === 'Cancel')
-      if (cancelButton) {
-        await cancelButton.trigger('click')
-        await wrapper.vm.$nextTick()
+      expect(cancelButton).toBeDefined()
+      await cancelButton!.trigger('click')
+      await wrapper.vm.$nextTick()
 
-        // Should hide confirmation dialog
-        expect(wrapper.text()).not.toContain('Confirm Import')
-      }
+      // Should hide confirmation dialog
+      expect(wrapper.text()).not.toContain('Confirm Import')
     })
   })
 })
