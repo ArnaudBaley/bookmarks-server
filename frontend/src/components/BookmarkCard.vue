@@ -20,6 +20,24 @@ function handleModify() {
   emit('modify', props.bookmark)
 }
 
+function handleDragStart(event: DragEvent) {
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', props.bookmark.id)
+    // Add visual feedback
+    if (event.target instanceof HTMLElement) {
+      event.target.style.opacity = '0.5'
+    }
+  }
+}
+
+function handleDragEnd(event: DragEvent) {
+  // Restore opacity
+  if (event.target instanceof HTMLElement) {
+    event.target.style.opacity = '1'
+  }
+}
+
 function getFaviconUrl(url: string): string {
   try {
     const urlObj = new URL(url)
@@ -32,8 +50,11 @@ function getFaviconUrl(url: string): string {
 
 <template>
   <div
-    class="flex flex-row items-center gap-3 p-3 w-72 border border-[var(--color-border)] rounded-lg bg-[var(--color-background-soft)] transition-[transform,box-shadow] duration-200 cursor-pointer hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
+    draggable="true"
+    class="flex flex-row items-center gap-3 p-3 w-72 border border-[var(--color-border)] rounded-lg bg-[var(--color-background-soft)] transition-[transform,box-shadow] duration-200 cursor-move hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
     @click="handleClick"
+    @dragstart="handleDragStart"
+    @dragend="handleDragEnd"
     role="button"
     tabindex="0"
     @keyup.enter="handleClick"

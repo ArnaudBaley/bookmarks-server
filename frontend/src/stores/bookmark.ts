@@ -10,6 +10,16 @@ export const useBookmarkStore = defineStore('bookmark', () => {
 
   const bookmarksCount = computed(() => bookmarks.value.length)
 
+  function getBookmarksByGroup(groupId: string) {
+    return bookmarks.value.filter((bookmark) => bookmark.groupIds?.includes(groupId))
+  }
+
+  function getUngroupedBookmarks() {
+    return bookmarks.value.filter(
+      (bookmark) => !bookmark.groupIds || bookmark.groupIds.length === 0
+    )
+  }
+
   async function fetchBookmarks() {
     loading.value = true
     error.value = null
@@ -75,6 +85,8 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     loading,
     error,
     bookmarksCount,
+    getBookmarksByGroup,
+    getUngroupedBookmarks,
     fetchBookmarks,
     addBookmark,
     updateBookmark,

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import type { UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
+import { useGroupStore } from '@/stores/group'
 
 interface Props {
   bookmark: Bookmark
@@ -15,13 +16,17 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+const groupStore = useGroupStore()
+
 const name = ref('')
 const url = ref('')
+const selectedGroupIds = ref<string[]>([])
 const error = ref<string | null>(null)
 
 onMounted(() => {
   name.value = props.bookmark.name
   url.value = props.bookmark.url
+  selectedGroupIds.value = props.bookmark.groupIds ? [...props.bookmark.groupIds] : []
 })
 
 function validateUrl(urlString: string): boolean {
@@ -66,6 +71,7 @@ function handleSubmit() {
   emit('submit', props.bookmark.id, {
     name: name.value.trim(),
     url: normalizedUrl,
+    groupIds: selectedGroupIds.value,
   })
 }
 
@@ -76,9 +82,21 @@ function handleDelete() {
 function handleCancel() {
   name.value = props.bookmark.name
   url.value = props.bookmark.url
+  selectedGroupIds.value = props.bookmark.groupIds ? [...props.bookmark.groupIds] : []
   error.value = null
   emit('cancel')
 }
+
+function toggleGroup(groupId: string) {
+  const index = selectedGroupIds.value.indexOf(groupId)
+  if (index === -1) {
+    selectedGroupIds.value.push(groupId)
+  } else {
+    selectedGroupIds.value.splice(index, 1)
+  }
+}
+
+const availableGroups = computed(() => groupStore.groups)
 </script>
 
 <template>
@@ -143,6 +161,39 @@ function handleCancel() {
             required
             class="w-full px-3 py-3 border border-[var(--color-border)] rounded text-base bg-[var(--color-background-soft)] text-[var(--color-text)] box-border focus:outline focus:outline-2 focus:outline-[var(--color-text)] focus:outline-offset-2"
           />
+        </div>
+        <div class="mb-6">
+          <label class="block mb-2 text-[var(--color-text)] font-medium">
+            Groups
+          </label>
+          <div
+            v-if="availableGroups.length === 0"
+            class="text-sm text-[var(--color-text)] opacity-60 py-2"
+          >
+            No groups available. Create a group first.
+          </div>
+          <div
+            v-else
+            class="flex flex-col gap-2 max-h-48 overflow-y-auto p-2 border border-[var(--color-border)] rounded bg-[var(--color-background-soft)]"
+          >
+            <label
+              v-for="group in availableGroups"
+              :key="group.id"
+              class="flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-[var(--color-background-mute)] transition-colors duration-200"
+            >
+              <input
+                type="checkbox"
+                :checked="selectedGroupIds.includes(group.id)"
+                @change="toggleGroup(group.id)"
+                class="w-4 h-4 cursor-pointer"
+              />
+              <div
+                class="w-4 h-4 rounded-full flex-shrink-0"
+                :style="{ backgroundColor: group.color }"
+              />
+              <span class="text-[var(--color-text)]">{{ group.name }}</span>
+            </label>
+          </div>
         </div>
         <div v-if="error" class="text-[#dc3545] mb-4 text-sm">{{ error }}</div>
         <div class="flex gap-4 justify-end">

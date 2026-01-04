@@ -48,6 +48,7 @@ export class MockBookmarkApi implements IBookmarkApi {
       id: crypto.randomUUID(),
       name: data.name,
       url: data.url,
+      groupIds: data.groupIds,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -71,6 +72,7 @@ export class MockBookmarkApi implements IBookmarkApi {
       ...bookmarks[bookmarkIndex],
       name: data.name,
       url: data.url,
+      groupIds: data.groupIds !== undefined ? data.groupIds : bookmarks[bookmarkIndex].groupIds,
       updatedAt: new Date().toISOString(),
     }
     
