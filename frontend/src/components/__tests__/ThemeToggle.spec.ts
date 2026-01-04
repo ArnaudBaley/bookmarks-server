@@ -16,8 +16,9 @@ describe('ThemeToggle', () => {
     const store = useThemeStore()
     store.setTheme('light')
 
-    const icon = wrapper.find('span')
-    expect(icon.text()).toBe('🌙')
+    const icon = wrapper.find('svg')
+    expect(icon.exists()).toBe(true)
+    expect(icon.attributes('viewBox')).toBe('0 0 24 24')
   })
 
   it('renders sun icon when theme is dark', async () => {
@@ -26,8 +27,9 @@ describe('ThemeToggle', () => {
     store.setTheme('dark')
     await wrapper.vm.$nextTick()
 
-    const icon = wrapper.find('span')
-    expect(icon.text()).toBe('☀️')
+    const icon = wrapper.find('svg')
+    expect(icon.exists()).toBe(true)
+    expect(icon.attributes('viewBox')).toBe('0 0 24 24')
   })
 
   it('calls toggleTheme when button is clicked', async () => {
@@ -76,10 +78,11 @@ describe('ThemeToggle', () => {
     const store = useThemeStore()
     store.setTheme('light')
 
-    const icon = wrapper.find('span')
+    const icon = wrapper.find('svg')
     expect(icon.exists()).toBe(true)
-    expect(icon.text()).toBe('🌙')
-    expect(icon.classes()).toContain('leading-none')
+    expect(icon.attributes('viewBox')).toBe('0 0 24 24')
+    expect(icon.attributes('width')).toBe('20')
+    expect(icon.attributes('height')).toBe('20')
   })
 
   it('displays sun icon for dark theme', async () => {
@@ -88,10 +91,11 @@ describe('ThemeToggle', () => {
     store.setTheme('dark')
     await wrapper.vm.$nextTick()
 
-    const icon = wrapper.find('span')
+    const icon = wrapper.find('svg')
     expect(icon.exists()).toBe(true)
-    expect(icon.text()).toBe('☀️')
-    expect(icon.classes()).toContain('leading-none')
+    expect(icon.attributes('viewBox')).toBe('0 0 24 24')
+    expect(icon.attributes('width')).toBe('20')
+    expect(icon.attributes('height')).toBe('20')
   })
 
   it('has correct button styling classes', () => {

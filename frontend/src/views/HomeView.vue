@@ -174,11 +174,24 @@ async function handleDrop(event: DragEvent) {
       <div class="flex gap-4 items-center">
         <ThemeToggle />
         <button
-          class="w-12 h-12 rounded-full border-none bg-[hsla(160,100%,37%,1)] text-white text-3xl cursor-pointer flex items-center justify-center transition-[transform,background-color] duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.2)] hover:scale-110 hover:bg-[hsla(160,100%,37%,0.8)] active:scale-95"
+          class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
           @click="showAddForm = true"
           aria-label="Add new bookmark"
         >
-          <span class="leading-none font-light">+</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
         </button>
       </div>
     </div>
