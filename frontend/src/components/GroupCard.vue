@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import type { Group } from '@/types/group'
 import type { Bookmark } from '@/types/bookmark'
+import { useBookmarkStore } from '@/stores/bookmark'
 import BookmarkCard from './BookmarkCard.vue'
 
 interface Props {
@@ -18,10 +19,47 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+const bookmarkStore = useBookmarkStore()
 const isExpanded = ref(true)
 const isDragOver = ref(false)
 
 const bookmarksCount = computed(() => props.bookmarks.length)
+
+function normalizeUrl(urlString: string): string {
+  if (!urlString) return ''
+  
+  // Add protocol if missing
+  if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+    return `https://${urlString}`
+  }
+  return urlString
+}
+
+function validateUrl(urlString: string): boolean {
+  try {
+    const urlObj = new URL(urlString)
+    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function extractNameFromUrl(urlString: string): string {
+  try {
+    const urlObj = new URL(urlString)
+    // Use hostname without www prefix
+    const hostname = urlObj.hostname.replace(/^www\./, '')
+    // Capitalize first letter and remove TLD for cleaner name
+    const domainPart = hostname.split('.')[0]
+    if (domainPart) {
+      return domainPart.charAt(0).toUpperCase() + domainPart.slice(1)
+    }
+    return hostname
+  } catch {
+    // Fallback to URL if parsing fails
+    return urlString.length > 50 ? urlString.substring(0, 50) + '...' : urlString
+  }
+}
 
 function handleModify() {
   emit('modify', props.group)
@@ -30,23 +68,113 @@ function handleModify() {
 function handleDragOver(event: DragEvent) {
   event.preventDefault()
   event.stopPropagation()
+  if (event.dataTransfer) {
+    // Check if it's a bookmark drag (effectAllowed is 'move' for bookmarks)
+    // or if it has URL-specific types (browsers set these for URL drags)
+    const hasUrlTypes = event.dataTransfer.types.includes('text/uri-list') || 
+                        event.dataTransfer.types.includes('URL') ||
+                        event.dataTransfer.types.includes('text/html')
+    
+    // If effectAllowed is 'move', it's a bookmark drag
+    // Otherwise, if it has URL types, it's a URL drag
+    if (event.dataTransfer.effectAllowed === 'move' && !hasUrlTypes) {
+      event.dataTransfer.dropEffect = 'move'
+    } else {
+      event.dataTransfer.dropEffect = 'copy'
+    }
+  }
   isDragOver.value = true
 }
 
 function handleDragLeave(event: DragEvent) {
   event.preventDefault()
   event.stopPropagation()
-  isDragOver.value = false
+  // Check if we're actually leaving the main element (not just moving to a child)
+  const target = event.target as HTMLElement
+  const relatedTarget = event.relatedTarget as HTMLElement | null
+  
+  if (!relatedTarget || !target.contains(relatedTarget)) {
+    isDragOver.value = false
+  }
 }
 
-function handleDrop(event: DragEvent) {
+async function handleDrop(event: DragEvent) {
   event.preventDefault()
   event.stopPropagation()
   isDragOver.value = false
 
-  const bookmarkId = event.dataTransfer?.getData('text/plain')
-  if (bookmarkId) {
-    emit('bookmark-drop', props.group.id, bookmarkId)
+  if (!event.dataTransfer) return
+
+  // Get all possible data types
+  const textPlain = event.dataTransfer.getData('text/plain')
+  const uriList = event.dataTransfer.getData('text/uri-list')
+  const urlData = event.dataTransfer.getData('URL')
+  const htmlData = event.dataTransfer.getData('text/html')
+
+  // First, check if text/plain is a bookmark ID (existing bookmark being moved)
+  if (textPlain) {
+    const bookmark = bookmarkStore.bookmarks.find((b) => b.id === textPlain)
+    if (bookmark) {
+      // It's a bookmark drag - move existing bookmark
+      emit('bookmark-drop', props.group.id, textPlain)
+      return
+    }
+  }
+
+  // If not a bookmark ID, check for URL data
+  // Check for URL-specific data types (browsers set these when dragging URLs)
+  let url: string | undefined = uriList || urlData
+
+  // If we got HTML, try to extract URL from href attribute
+  if (htmlData && htmlData.includes('<a') && htmlData.includes('href=')) {
+    const hrefMatch = htmlData.match(/href=["']([^"']+)["']/i)
+    if (hrefMatch && hrefMatch[1]) {
+      url = hrefMatch[1]
+    }
+  }
+
+  // Fallback to text/plain if no URL found yet (and it's not a bookmark ID)
+  if (!url && textPlain) {
+    url = textPlain
+  }
+
+  // Clean up the URL (remove newlines, trim, decode HTML entities)
+  if (!url) return
+  
+  url = url.trim().split('\n')[0]?.split('\r')[0] || url.trim()
+  
+  // Decode HTML entities if present
+  if (url && url.includes('&')) {
+    const textarea = document.createElement('textarea')
+    textarea.innerHTML = url
+    const decodedUrl = textarea.value
+    if (decodedUrl) {
+      url = decodedUrl
+    }
+  }
+
+  if (!url) return
+
+  // Normalize and validate URL
+  const normalizedUrl = normalizeUrl(url)
+  
+  if (!validateUrl(normalizedUrl)) {
+    // Not a valid URL, ignore
+    console.error('Invalid URL dropped:', url)
+    return
+  }
+
+  // It's a valid URL - create a new bookmark with this group
+  const name = extractNameFromUrl(normalizedUrl)
+
+  try {
+    await bookmarkStore.addBookmark({
+      name,
+      url: normalizedUrl,
+      groupIds: [props.group.id],
+    })
+  } catch (error) {
+    console.error('Failed to add bookmark to group:', error)
   }
 }
 </script>
@@ -123,6 +251,9 @@ function handleDrop(event: DragEvent) {
     <div
       v-show="isExpanded"
       class="p-4 pt-0"
+      @dragover="handleDragOver"
+      @dragleave="handleDragLeave"
+      @drop="handleDrop"
     >
       <div
         v-if="bookmarksCount === 0"

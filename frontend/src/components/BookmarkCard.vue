@@ -23,6 +23,7 @@ function handleModify() {
 function handleDragStart(event: DragEvent) {
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
+    // Set bookmark ID in text/plain - we'll identify it by checking if it exists in the store
     event.dataTransfer.setData('text/plain', props.bookmark.id)
     // Add visual feedback
     if (event.target instanceof HTMLElement) {
