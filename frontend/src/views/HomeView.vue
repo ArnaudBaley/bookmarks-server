@@ -210,7 +210,7 @@ async function handleDrop(event: DragEvent) {
 
     <div
       v-else
-      class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6 md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] md:gap-4"
+      class="grid grid-cols-[repeat(auto-fill,minmax(288px,1fr))] gap-3"
     >
       <BookmarkCard
         v-for="bookmark in bookmarkStore.bookmarks"

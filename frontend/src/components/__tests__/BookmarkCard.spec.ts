@@ -36,27 +36,27 @@ describe('BookmarkCard', () => {
     expect(img.attributes('alt')).toBe('Test Bookmark icon')
   })
 
-  it('opens URL in new window when icon is clicked', () => {
+  it('opens URL in new window when card is clicked', () => {
     const bookmark = createBookmark({ url: 'https://example.com' })
     const wrapper = mount(BookmarkCard, {
       props: { bookmark },
     })
 
-    const iconContainer = wrapper.find('[role="button"]')
-    iconContainer.trigger('click')
+    const card = wrapper.find('[role="button"]')
+    card.trigger('click')
 
     expect(mockOpen).toHaveBeenCalledTimes(1)
     expect(mockOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
   })
 
-  it('opens URL when Enter key is pressed on icon', () => {
+  it('opens URL when Enter key is pressed on card', () => {
     const bookmark = createBookmark({ url: 'https://example.com' })
     const wrapper = mount(BookmarkCard, {
       props: { bookmark },
     })
 
-    const iconContainer = wrapper.find('[role="button"]')
-    iconContainer.trigger('keyup.enter')
+    const card = wrapper.find('[role="button"]')
+    card.trigger('keyup.enter')
 
     expect(mockOpen).toHaveBeenCalledTimes(1)
     expect(mockOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
@@ -105,7 +105,7 @@ describe('BookmarkCard', () => {
 
     const modifyButton = wrapper.find('button[aria-label="Modify bookmark"]')
     expect(modifyButton.exists()).toBe(true)
-    // Check that it contains an SVG (the edit icon)
+    // Check that it contains an SVG (the three dots icon)
     const svg = modifyButton.find('svg')
     expect(svg.exists()).toBe(true)
   })
@@ -116,9 +116,24 @@ describe('BookmarkCard', () => {
       props: { bookmark },
     })
 
-    const card = wrapper.find('div')
+    const card = wrapper.find('[role="button"]')
     expect(card.classes()).toContain('flex')
-    expect(card.classes()).toContain('flex-col')
+    expect(card.classes()).toContain('flex-row')
+  })
+
+  it('does not open URL when modify button is clicked', async () => {
+    const bookmark = createBookmark({ url: 'https://example.com' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    const modifyButton = wrapper.find('button[aria-label="Modify bookmark"]')
+    await modifyButton.trigger('click')
+
+    // Should not have opened the URL
+    expect(mockOpen).not.toHaveBeenCalled()
+    // But should have emitted modify event
+    expect(wrapper.emitted('modify')).toBeTruthy()
   })
 })
 
