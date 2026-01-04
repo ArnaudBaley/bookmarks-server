@@ -43,8 +43,9 @@ test.describe('UI Snapshots', () => {
     await page.goto('/')
     await page.waitForLoadState('domcontentloaded')
     
-    // Add some test bookmarks via localStorage (mock API)
+    // Clear any existing bookmarks and add test bookmarks via localStorage (mock API)
     await page.evaluate(() => {
+      localStorage.removeItem('bookmarks-mock-data')
       const bookmarks = [
         {
           id: '1',
@@ -70,10 +71,16 @@ test.describe('UI Snapshots', () => {
     
     // Reload to show bookmarks
     await page.reload()
-    await page.waitForLoadState('domcontentloaded')
+    await page.waitForLoadState('networkidle')
     
-    // Wait for bookmarks to be visible - look for the modify button which indicates a bookmark card
-    await expect(page.getByRole('button', { name: /modify bookmark/i })).toBeVisible()
+    // Wait for the main content to be visible
+    await expect(page.getByRole('heading', { name: 'My Bookmarks' })).toBeVisible()
+    
+    // Wait for bookmarks to be visible - look for at least one modify button
+    await expect(page.getByRole('button', { name: /modify bookmark/i }).first()).toBeVisible()
+    
+    // Wait a bit more to ensure all rendering is complete
+    await page.waitForTimeout(500)
     
     // Capture full page screenshot
     await expect(page).toHaveScreenshot('homepage-with-bookmarks-light.png', {
@@ -130,8 +137,9 @@ test.describe('UI Snapshots', () => {
     await page.goto('/')
     await page.waitForLoadState('domcontentloaded')
     
-    // Add a test bookmark via localStorage (mock API)
+    // Clear any existing bookmarks and add a test bookmark via localStorage (mock API)
     await page.evaluate(() => {
+      localStorage.removeItem('bookmarks-mock-data')
       const bookmarks = [
         {
           id: '1',
@@ -145,17 +153,23 @@ test.describe('UI Snapshots', () => {
     
     // Reload to show bookmark
     await page.reload()
-    await page.waitForLoadState('domcontentloaded')
+    await page.waitForLoadState('networkidle')
     
-    // Wait for bookmark to be visible
-    await expect(page.getByRole('button', { name: /modify bookmark/i })).toBeVisible()
+    // Wait for bookmark to be visible - use getByLabel for more specific targeting
+    await expect(page.getByLabel('Modify bookmark').first()).toBeVisible()
     
-    // Click the modify button
-    const modifyButton = page.getByRole('button', { name: /modify bookmark/i }).first()
+    // Wait a bit to ensure page is stable
+    await page.waitForTimeout(500)
+    
+    // Click the modify button - use getByLabel for more specific targeting
+    const modifyButton = page.getByLabel('Modify bookmark').first()
     await modifyButton.click()
     
     // Wait for edit form to be visible - look for the form heading
     await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
+    
+    // Wait a bit more to ensure form is fully rendered and animations are complete
+    await page.waitForTimeout(500)
     
     // Capture screenshot of the form - use the modal container
     const form = page.locator('div:has-text("Edit Bookmark")').locator('..').first()
@@ -176,8 +190,9 @@ test.describe('UI Snapshots', () => {
     // Verify dark theme is applied
     await expect(page.locator('html')).toHaveClass(/dark/)
     
-    // Add a test bookmark via localStorage (mock API)
+    // Clear any existing bookmarks and add a test bookmark via localStorage (mock API)
     await page.evaluate(() => {
+      localStorage.removeItem('bookmarks-mock-data')
       const bookmarks = [
         {
           id: '1',
@@ -191,17 +206,23 @@ test.describe('UI Snapshots', () => {
     
     // Reload to show bookmark
     await page.reload()
-    await page.waitForLoadState('domcontentloaded')
+    await page.waitForLoadState('networkidle')
     
-    // Wait for bookmark to be visible
-    await expect(page.getByRole('button', { name: /modify bookmark/i })).toBeVisible()
+    // Wait for bookmark to be visible - use getByLabel for more specific targeting
+    await expect(page.getByLabel('Modify bookmark').first()).toBeVisible()
     
-    // Click the modify button
-    const modifyButton = page.getByRole('button', { name: /modify bookmark/i }).first()
+    // Wait a bit to ensure page is stable
+    await page.waitForTimeout(500)
+    
+    // Click the modify button - use getByLabel for more specific targeting
+    const modifyButton = page.getByLabel('Modify bookmark').first()
     await modifyButton.click()
     
     // Wait for edit form to be visible - look for the form heading
     await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
+    
+    // Wait a bit more to ensure form is fully rendered and animations are complete
+    await page.waitForTimeout(500)
     
     // Capture screenshot of the form - use the modal container
     const form = page.locator('div:has-text("Edit Bookmark")').locator('..').first()
