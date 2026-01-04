@@ -17,6 +17,7 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix --cache",
+    "lint:check": "eslint . --cache",
     "format": "prettier --write --experimental-cli src/",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",

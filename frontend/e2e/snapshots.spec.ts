@@ -71,16 +71,13 @@ test.describe('UI Snapshots', () => {
     
     // Reload to show bookmarks
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
     
     // Wait for the main content to be visible
     await expect(page.getByRole('heading', { name: 'My Bookmarks' })).toBeVisible()
     
     // Wait for bookmarks to be visible - look for at least one modify button
     await expect(page.getByRole('button', { name: /modify bookmark/i }).first()).toBeVisible()
-    
-    // Wait a bit more to ensure all rendering is complete
-    await page.waitForTimeout(500)
     
     // Capture full page screenshot
     await expect(page).toHaveScreenshot('homepage-with-bookmarks-light.png', {
@@ -153,13 +150,10 @@ test.describe('UI Snapshots', () => {
     
     // Reload to show bookmark
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
     
     // Wait for bookmark to be visible - use getByLabel for more specific targeting
     await expect(page.getByLabel('Modify bookmark').first()).toBeVisible()
-    
-    // Wait a bit to ensure page is stable
-    await page.waitForTimeout(500)
     
     // Click the modify button - use getByLabel for more specific targeting
     const modifyButton = page.getByLabel('Modify bookmark').first()
@@ -167,9 +161,6 @@ test.describe('UI Snapshots', () => {
     
     // Wait for edit form to be visible - look for the form heading
     await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
-    
-    // Wait a bit more to ensure form is fully rendered and animations are complete
-    await page.waitForTimeout(500)
     
     // Capture screenshot of the form - use the modal container
     const form = page.locator('div:has-text("Edit Bookmark")').locator('..').first()
@@ -206,13 +197,10 @@ test.describe('UI Snapshots', () => {
     
     // Reload to show bookmark
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
     
     // Wait for bookmark to be visible - use getByLabel for more specific targeting
     await expect(page.getByLabel('Modify bookmark').first()).toBeVisible()
-    
-    // Wait a bit to ensure page is stable
-    await page.waitForTimeout(500)
     
     // Click the modify button - use getByLabel for more specific targeting
     const modifyButton = page.getByLabel('Modify bookmark').first()
@@ -220,9 +208,6 @@ test.describe('UI Snapshots', () => {
     
     // Wait for edit form to be visible - look for the form heading
     await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
-    
-    // Wait a bit more to ensure form is fully rendered and animations are complete
-    await page.waitForTimeout(500)
     
     // Capture screenshot of the form - use the modal container
     const form = page.locator('div:has-text("Edit Bookmark")').locator('..').first()
