@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
 import EditBookmarkForm from '../EditBookmarkForm.vue'
-import { createBookmark } from '@/test-utils'
+import { createBookmark, mountWithPinia } from '@/test-utils'
 
 describe('EditBookmarkForm', () => {
   const mockBookmark = createBookmark({
@@ -15,7 +14,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('renders form fields correctly', () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -30,7 +29,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('renders form title', () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -39,7 +38,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('initializes form fields with bookmark data', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -56,7 +55,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('validates that name is required', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -73,7 +72,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('validates that URL is required', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -90,7 +89,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('validates URL format', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -108,7 +107,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('normalizes URLs by adding https:// if missing', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -126,12 +125,13 @@ describe('EditBookmarkForm', () => {
       {
         name: 'Test Bookmark',
         url: 'https://example.com',
+        groupIds: [],
       },
     ])
   })
 
   it('keeps https:// if already present', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -148,12 +148,13 @@ describe('EditBookmarkForm', () => {
       {
         name: 'Test Bookmark',
         url: 'https://example.com',
+        groupIds: [],
       },
     ])
   })
 
   it('keeps http:// if already present', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -170,12 +171,13 @@ describe('EditBookmarkForm', () => {
       {
         name: 'Test Bookmark',
         url: 'http://example.com',
+        groupIds: [],
       },
     ])
   })
 
   it('trims whitespace from name and URL', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -195,12 +197,13 @@ describe('EditBookmarkForm', () => {
       {
         name: 'Updated Bookmark',
         url: 'https://updated.com',
+        groupIds: [],
       },
     ])
   })
 
   it('emits submit event with correct data on valid form submission', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -221,12 +224,13 @@ describe('EditBookmarkForm', () => {
       {
         name: 'Updated Bookmark',
         url: 'https://updated.com',
+        groupIds: [],
       },
     ])
   })
 
   it('emits cancel event when cancel button is clicked', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -241,7 +245,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('resets form to original values when cancel is clicked', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -265,7 +269,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('emits cancel event when clicking outside the modal', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -278,7 +282,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('does not emit cancel when clicking inside the modal', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -291,7 +295,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('emits delete event when delete button is clicked', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -305,7 +309,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('clears error message on new submission attempt', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -328,7 +332,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('displays error message when validation fails', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },
@@ -352,7 +356,7 @@ describe('EditBookmarkForm', () => {
   })
 
   it('clears error when cancel is clicked', async () => {
-    const wrapper = mount(EditBookmarkForm, {
+    const wrapper = mountWithPinia(EditBookmarkForm, {
       props: {
         bookmark: mockBookmark,
       },

@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createTestPinia, mountWithPinia, createBookmark, createBookmarkArray } from '@/test-utils'
 import HomeView from '../HomeView.vue'
 import { useBookmarkStore } from '@/stores/bookmark'
+import { useGroupStore } from '@/stores/group'
 import { MockBookmarkApi } from '@/services/bookmarkApi.mock'
 
 describe('HomeView', () => {
@@ -19,8 +20,10 @@ describe('HomeView', () => {
   it('fetches bookmarks on mount', async () => {
     // Create Pinia instance and store before mounting
     const pinia = createTestPinia()
-    const store = useBookmarkStore()
-    const fetchSpy = vi.spyOn(store, 'fetchBookmarks').mockResolvedValue(undefined)
+    const bookmarkStore = useBookmarkStore()
+    const groupStore = useGroupStore()
+    const fetchBookmarksSpy = vi.spyOn(bookmarkStore, 'fetchBookmarks').mockResolvedValue(undefined)
+    const fetchGroupsSpy = vi.spyOn(groupStore, 'fetchGroups').mockResolvedValue(undefined)
 
     // Now mount the component
     const wrapper = mount(HomeView, {
@@ -33,16 +36,20 @@ describe('HomeView', () => {
     await wrapper.vm.$nextTick()
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(fetchBookmarksSpy).toHaveBeenCalledTimes(1)
+    expect(fetchGroupsSpy).toHaveBeenCalledTimes(1)
   })
 
   it('displays loading state when bookmarks are being fetched', async () => {
     const wrapper = mountWithPinia(HomeView)
-    const store = useBookmarkStore()
+    const bookmarkStore = useBookmarkStore()
+    const groupStore = useGroupStore()
 
     // Set loading state
-    store.loading = true
-    store.bookmarks = []
+    bookmarkStore.loading = true
+    bookmarkStore.bookmarks = []
+    groupStore.loading = false
+    groupStore.groups = []
 
     await wrapper.vm.$nextTick()
 
@@ -51,11 +58,15 @@ describe('HomeView', () => {
 
   it('displays error state with retry button when fetch fails', async () => {
     const wrapper = mountWithPinia(HomeView)
-    const store = useBookmarkStore()
+    const bookmarkStore = useBookmarkStore()
+    const groupStore = useGroupStore()
 
-    store.error = 'Failed to fetch bookmarks'
-    store.bookmarks = []
-    store.loading = false
+    bookmarkStore.error = 'Failed to fetch bookmarks'
+    bookmarkStore.bookmarks = []
+    bookmarkStore.loading = false
+    groupStore.groups = []
+    groupStore.loading = false
+    groupStore.error = null
 
     await wrapper.vm.$nextTick()
 
@@ -69,13 +80,18 @@ describe('HomeView', () => {
 
   it('calls fetchBookmarks when retry button is clicked', async () => {
     const wrapper = mountWithPinia(HomeView)
-    const store = useBookmarkStore()
+    const bookmarkStore = useBookmarkStore()
+    const groupStore = useGroupStore()
 
-    store.error = 'Failed to fetch bookmarks'
-    store.bookmarks = []
-    store.loading = false
+    bookmarkStore.error = 'Failed to fetch bookmarks'
+    bookmarkStore.bookmarks = []
+    bookmarkStore.loading = false
+    groupStore.groups = []
+    groupStore.loading = false
+    groupStore.error = null
 
-    const fetchSpy = vi.spyOn(store, 'fetchBookmarks')
+    const fetchBookmarksSpy = vi.spyOn(bookmarkStore, 'fetchBookmarks')
+    const fetchGroupsSpy = vi.spyOn(groupStore, 'fetchGroups')
 
     await wrapper.vm.$nextTick()
 
@@ -85,16 +101,21 @@ describe('HomeView', () => {
     expect(retryButton).toBeDefined()
     await retryButton!.trigger('click')
 
-    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(fetchBookmarksSpy).toHaveBeenCalledTimes(1)
+    expect(fetchGroupsSpy).toHaveBeenCalledTimes(1)
   })
 
   it('displays empty state message when no bookmarks exist', async () => {
     const wrapper = mountWithPinia(HomeView)
-    const store = useBookmarkStore()
+    const bookmarkStore = useBookmarkStore()
+    const groupStore = useGroupStore()
 
-    store.bookmarks = []
-    store.loading = false
-    store.error = null
+    bookmarkStore.bookmarks = []
+    bookmarkStore.loading = false
+    bookmarkStore.error = null
+    groupStore.groups = []
+    groupStore.loading = false
+    groupStore.error = null
 
     await wrapper.vm.$nextTick()
 
@@ -103,12 +124,16 @@ describe('HomeView', () => {
 
   it('renders bookmark cards when bookmarks exist', async () => {
     const wrapper = mountWithPinia(HomeView)
-    const store = useBookmarkStore()
+    const bookmarkStore = useBookmarkStore()
+    const groupStore = useGroupStore()
 
     const bookmarks = createBookmarkArray(3)
-    store.bookmarks = bookmarks
-    store.loading = false
-    store.error = null
+    bookmarkStore.bookmarks = bookmarks
+    bookmarkStore.loading = false
+    bookmarkStore.error = null
+    groupStore.groups = []
+    groupStore.loading = false
+    groupStore.error = null
 
     await wrapper.vm.$nextTick()
 
