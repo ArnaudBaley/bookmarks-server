@@ -72,6 +72,9 @@ The application will be available at `http://localhost:8080`
 
 ## Environments variables
 
-- `VITE_API_BASE_URL`: Backend API URL (default: `http://localhost:3000`)
+- `VITE_API_BASE_URL`: Backend API URL 
+  - Development default: `http://localhost:3000`
+  - Production default (Docker): `http://backend:3000` (uses Docker service name)
+  - Production (external): `http://localhost:3001` (if accessing from host)
 - `VITE_USE_MOCK_API`: Force mock API mode (default: `false`)
 - `FRONTEND_PORT`: Production port mapping (default: `8080`)

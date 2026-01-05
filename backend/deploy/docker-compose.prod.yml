@@ -1,0 +1,34 @@
+version: '3.8'
+
+name: bookmarks-backend-prod
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: bookmarks-backend-prod
+    ports:
+      - "${BACKEND_PORT:-3001}:3000"
+    volumes:
+      # Mount data directory for database persistence
+      - ./data:/app/data
+    environment:
+      - PORT=3000
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
+      - DATABASE_PATH=${DATABASE_PATH:-/app/data/bookmarks.db}
+    networks:
+      - bookmarks-network-prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  bookmarks-network-prod:
+    driver: bridge
+    name: bookmarks-network-prod
+

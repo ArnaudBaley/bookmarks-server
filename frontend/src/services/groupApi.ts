@@ -23,77 +23,9 @@ function createGroupApi(): IGroupApi {
     return new MockGroupApi()
   }
 
-  // Use HTTP API with fallback to mock on errors
+  // Use HTTP API directly - errors will propagate to stores for proper error handling
   console.log(`[GroupApi] Using HttpGroupApi with base URL: ${API_BASE_URL}`)
-  return new HttpGroupApiWithFallback(API_BASE_URL)
-}
-
-/**
- * Wrapper that falls back to mock API if HTTP API fails
- * This provides a seamless experience during development
- */
-class HttpGroupApiWithFallback implements IGroupApi {
-  private httpApi: HttpGroupApi
-  private mockApi: MockGroupApi
-
-  constructor(baseUrl: string) {
-    this.httpApi = new HttpGroupApi(baseUrl)
-    this.mockApi = new MockGroupApi()
-  }
-
-  async getAllGroups() {
-    try {
-      return await this.httpApi.getAllGroups()
-    } catch (error) {
-      console.warn('[GroupApi] HTTP API failed, falling back to mock API', error)
-      return this.mockApi.getAllGroups()
-    }
-  }
-
-  async createGroup(data: CreateGroupDto) {
-    try {
-      return await this.httpApi.createGroup(data)
-    } catch (error) {
-      console.warn('[GroupApi] HTTP API failed, falling back to mock API', error)
-      return this.mockApi.createGroup(data)
-    }
-  }
-
-  async updateGroup(id: string, data: UpdateGroupDto) {
-    try {
-      return await this.httpApi.updateGroup(id, data)
-    } catch (error) {
-      console.warn('[GroupApi] HTTP API failed, falling back to mock API', error)
-      return this.mockApi.updateGroup(id, data)
-    }
-  }
-
-  async deleteGroup(id: string) {
-    try {
-      return await this.httpApi.deleteGroup(id)
-    } catch (error) {
-      console.warn('[GroupApi] HTTP API failed, falling back to mock API', error)
-      return this.mockApi.deleteGroup(id)
-    }
-  }
-
-  async addBookmarkToGroup(groupId: string, bookmarkId: string) {
-    try {
-      return await this.httpApi.addBookmarkToGroup(groupId, bookmarkId)
-    } catch (error) {
-      console.warn('[GroupApi] HTTP API failed, falling back to mock API', error)
-      return this.mockApi.addBookmarkToGroup(groupId, bookmarkId)
-    }
-  }
-
-  async removeBookmarkFromGroup(groupId: string, bookmarkId: string) {
-    try {
-      return await this.httpApi.removeBookmarkFromGroup(groupId, bookmarkId)
-    } catch (error) {
-      console.warn('[GroupApi] HTTP API failed, falling back to mock API', error)
-      return this.mockApi.removeBookmarkFromGroup(groupId, bookmarkId)
-    }
-  }
+  return new HttpGroupApi(API_BASE_URL)
 }
 
 // Export the singleton instance

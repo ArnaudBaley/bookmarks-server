@@ -1,0 +1,108 @@
+### Bookmarks API
+
+@baseUrl = http://localhost:3000
+
+### Get all bookmarks
+GET {{baseUrl}}/bookmarks
+
+### Create a new bookmark
+POST {{baseUrl}}/bookmarks
+Content-Type: application/json
+
+{
+  "name": "Example Bookmark",
+  "url": "https://example.com",
+  "groupIds": []
+}
+
+### Create a bookmark with groups
+POST {{baseUrl}}/bookmarks
+Content-Type: application/json
+
+{
+  "name": "NestJS Documentation",
+  "url": "https://docs.nestjs.com",
+  "groupIds": ["group-id-1", "group-id-2"]
+}
+
+### Update a bookmark
+PUT {{baseUrl}}/bookmarks/{{bookmarkId}}
+Content-Type: application/json
+
+{
+  "name": "Updated Bookmark Name",
+  "url": "https://updated-url.com",
+  "groupIds": ["group-id-1"]
+}
+
+### Delete a bookmark
+DELETE {{baseUrl}}/bookmarks/{{bookmarkId}}
+
+### Groups API
+
+### Get all groups
+GET {{baseUrl}}/groups
+
+### Create a new group
+POST {{baseUrl}}/groups
+Content-Type: application/json
+
+{
+  "name": "Development",
+  "color": "#3b82f6"
+}
+
+### Create another group
+POST {{baseUrl}}/groups
+Content-Type: application/json
+
+{
+  "name": "Design",
+  "color": "#ef4444"
+}
+
+### Update a group
+PUT {{baseUrl}}/groups/{{groupId}}
+Content-Type: application/json
+
+{
+  "name": "Updated Group Name",
+  "color": "#10b981"
+}
+
+### Delete a group
+DELETE {{baseUrl}}/groups/{{groupId}}
+
+### Group-Bookmark Relationships
+
+### Add a bookmark to a group
+POST {{baseUrl}}/groups/{{groupId}}/bookmarks/{{bookmarkId}}
+
+### Remove a bookmark from a group
+DELETE {{baseUrl}}/groups/{{groupId}}/bookmarks/{{bookmarkId}}
+
+### Example Workflow: Create group, create bookmark, add bookmark to group
+
+### Step 1: Create a group
+# @name createGroup
+POST {{baseUrl}}/groups
+Content-Type: application/json
+
+{
+  "name": "Frontend Resources",
+  "color": "#8b5cf6"
+}
+
+### Step 2: Create a bookmark (use the group ID from step 1)
+POST {{baseUrl}}/bookmarks
+Content-Type: application/json
+
+{
+  "name": "Vue.js Documentation",
+  "url": "https://vuejs.org",
+  "groupIds": ["{{groupId}}"]
+}
+
+### Step 3: Or add bookmark to group separately
+POST {{baseUrl}}/groups/{{groupId}}/bookmarks/{{bookmarkId}}
+

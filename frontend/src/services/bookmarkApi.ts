@@ -23,59 +23,9 @@ function createBookmarkApi(): IBookmarkApi {
     return new MockBookmarkApi()
   }
 
-  // Use HTTP API with fallback to mock on errors
+  // Use HTTP API directly - errors will propagate to stores for proper error handling
   console.log(`[BookmarkApi] Using HttpBookmarkApi with base URL: ${API_BASE_URL}`)
-  return new HttpBookmarkApiWithFallback(API_BASE_URL)
-}
-
-/**
- * Wrapper that falls back to mock API if HTTP API fails
- * This provides a seamless experience during development
- */
-class HttpBookmarkApiWithFallback implements IBookmarkApi {
-  private httpApi: HttpBookmarkApi
-  private mockApi: MockBookmarkApi
-
-  constructor(baseUrl: string) {
-    this.httpApi = new HttpBookmarkApi(baseUrl)
-    this.mockApi = new MockBookmarkApi()
-  }
-
-  async getAllBookmarks() {
-    try {
-      return await this.httpApi.getAllBookmarks()
-    } catch (error) {
-      console.warn('[BookmarkApi] HTTP API failed, falling back to mock API', error)
-      return this.mockApi.getAllBookmarks()
-    }
-  }
-
-  async createBookmark(data: CreateBookmarkDto) {
-    try {
-      return await this.httpApi.createBookmark(data)
-    } catch (error) {
-      console.warn('[BookmarkApi] HTTP API failed, falling back to mock API', error)
-      return this.mockApi.createBookmark(data)
-    }
-  }
-
-  async updateBookmark(id: string, data: UpdateBookmarkDto) {
-    try {
-      return await this.httpApi.updateBookmark(id, data)
-    } catch (error) {
-      console.warn('[BookmarkApi] HTTP API failed, falling back to mock API', error)
-      return this.mockApi.updateBookmark(id, data)
-    }
-  }
-
-  async deleteBookmark(id: string) {
-    try {
-      return await this.httpApi.deleteBookmark(id)
-    } catch (error) {
-      console.warn('[BookmarkApi] HTTP API failed, falling back to mock API', error)
-      return this.mockApi.deleteBookmark(id)
-    }
-  }
+  return new HttpBookmarkApi(API_BASE_URL)
 }
 
 // Export the singleton instance
