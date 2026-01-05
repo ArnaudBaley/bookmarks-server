@@ -1,5 +1,4 @@
 import type { IGroupApi } from './groupApi.interface'
-import type { CreateGroupDto, UpdateGroupDto } from '@/types/group'
 import { MockGroupApi } from './groupApi.mock'
 import { HttpGroupApi } from './groupApi.http'
 

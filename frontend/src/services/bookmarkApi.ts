@@ -1,5 +1,4 @@
 import type { IBookmarkApi } from './bookmarkApi.interface'
-import type { CreateBookmarkDto, UpdateBookmarkDto } from '@/types/bookmark'
 import { MockBookmarkApi } from './bookmarkApi.mock'
 import { HttpBookmarkApi } from './bookmarkApi.http'
 
