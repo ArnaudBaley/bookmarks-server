@@ -108,10 +108,24 @@ export default defineConfig({
     /**
      * Use the dev server by default for faster feedback loop.
      * Use the preview server on CI for more realistic testing.
-     * Playwright will re-use the local server if there is already a dev-server running.
+     * Always start a fresh server for e2e tests to ensure mock API is used.
      */
     command: process.env.CI ? 'npm run preview' : 'npm run dev',
     port: process.env.CI ? 4173 : 5173,
-    reuseExistingServer: !process.env.CI,
+    /**
+     * Always start a fresh server for e2e tests to ensure environment variables
+     * are properly set. This prevents reusing a server that was started without mocks.
+     */
+    reuseExistingServer: false,
+    /**
+     * Set environment variables to force mock API usage for e2e tests.
+     * This ensures tests don't depend on the backend being available.
+     * Note: VITE_API_BASE_URL is intentionally not set, so the mock API will be used.
+     */
+    env: {
+      VITE_USE_MOCK_API: 'true',
+      // Explicitly unset VITE_API_BASE_URL by not including it in env
+      // This ensures the mock API is used (see bookmarkApi.ts and groupApi.ts)
+    },
   },
 })
