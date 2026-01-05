@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { Bookmark, CreateBookmarkDto, UpdateBookmarkDto } from '@/types/bookmark'
-import { bookmarkApi } from '@/services/bookmarkApi'
+import { bookmarkApi } from '@/services/bookmarkApi/bookmarkApi'
 
 export const useBookmarkStore = defineStore('bookmark', () => {
   const bookmarks = ref<Bookmark[]>([])

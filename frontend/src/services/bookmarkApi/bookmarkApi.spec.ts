@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { HttpBookmarkApi, MockBookmarkApi } from '../bookmarkApi'
+import { HttpBookmarkApi, MockBookmarkApi } from './bookmarkApi'
 import { createBookmark, createBookmarkDto } from '@/test-utils'
-import type { IBookmarkApi } from '../bookmarkApi.interface'
+import type { IBookmarkApi } from './bookmarkApi.interface'
 import type { CreateBookmarkDto } from '@/types/bookmark'
 
 // We need to test the HttpBookmarkApiWithFallback class

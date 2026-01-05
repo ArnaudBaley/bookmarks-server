@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { MockGroupApi } from '../groupApi.mock'
+import { MockGroupApi } from './groupApi.mock'
 import { createGroupDto, createBookmark } from '@/test-utils'
 
 describe('MockGroupApi', () => {

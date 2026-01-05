@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import BookmarkCard from '../BookmarkCard.vue'
+import BookmarkCard from './BookmarkCard.vue'
 import { createBookmark, mockWindowOpen } from '@/test-utils'
 
 describe('BookmarkCard', () => {

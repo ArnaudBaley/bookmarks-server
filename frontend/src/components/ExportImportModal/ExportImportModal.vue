@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useBookmarkStore } from '@/stores/bookmark'
-import { useGroupStore } from '@/stores/group'
+import { useBookmarkStore } from '@/stores/bookmark/bookmark'
+import { useGroupStore } from '@/stores/group/group'
 import type { CreateBookmarkDto } from '@/types/bookmark'
 import type { CreateGroupDto } from '@/types/group'
 

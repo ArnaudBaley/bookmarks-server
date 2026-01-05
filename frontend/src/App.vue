@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterView } from 'vue-router'
-import { useBookmarkStore } from '@/stores/bookmark'
+import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 
 const bookmarkStore = useBookmarkStore()
 const isDraggingOver = ref(false)

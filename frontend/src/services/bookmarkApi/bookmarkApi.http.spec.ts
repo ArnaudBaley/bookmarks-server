@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { HttpBookmarkApi } from '../bookmarkApi.http'
+import { HttpBookmarkApi } from './bookmarkApi.http'
 import { createBookmark, createBookmarkDto, createBookmarkArray } from '@/test-utils'
 
 describe('HttpBookmarkApi', () => {

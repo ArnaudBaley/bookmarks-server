@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountWithPinia } from '@/test-utils'
-import ThemeToggle from '../ThemeToggle.vue'
-import { useThemeStore } from '@/stores/theme'
+import ThemeToggle from './ThemeToggle.vue'
+import { useThemeStore } from '@/stores/theme/theme'
 
 describe('ThemeToggle', () => {
   beforeEach(() => {

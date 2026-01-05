@@ -1,8 +1,8 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { Group, CreateGroupDto, UpdateGroupDto } from '@/types/group'
-import { groupApi } from '@/services/groupApi'
-import { useBookmarkStore } from './bookmark'
+import { groupApi } from '@/services/groupApi/groupApi'
+import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 
 export const useGroupStore = defineStore('group', () => {
   const groups = ref<Group[]>([])

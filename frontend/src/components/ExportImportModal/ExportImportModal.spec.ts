@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createTestPinia } from '@/test-utils'
-import ExportImportModal from '../ExportImportModal.vue'
-import { useBookmarkStore } from '@/stores/bookmark'
-import { useGroupStore } from '@/stores/group'
+import ExportImportModal from './ExportImportModal.vue'
+import { useBookmarkStore } from '@/stores/bookmark/bookmark'
+import { useGroupStore } from '@/stores/group/group'
 import { createBookmark, createBookmarkArray, createGroup, createGroupArray } from '@/test-utils'
 
 /**

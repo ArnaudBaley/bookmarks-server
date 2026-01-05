@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import type { UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
-import { useGroupStore } from '@/stores/group'
+import { useGroupStore } from '@/stores/group/group'
 
 interface Props {
   bookmark: Bookmark

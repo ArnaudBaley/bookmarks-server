@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import AddGroupForm from '../AddGroupForm.vue'
+import AddGroupForm from './AddGroupForm.vue'
 
 describe('AddGroupForm', () => {
   beforeEach(() => {

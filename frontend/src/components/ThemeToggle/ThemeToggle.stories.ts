@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import ThemeToggle from './ThemeToggle.vue'
-import { useThemeStore } from '@/stores/theme'
+import { useThemeStore } from '@/stores/theme/theme'
 
 const meta = {
   title: 'Components/ThemeToggle',

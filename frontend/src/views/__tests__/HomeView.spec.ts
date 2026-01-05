@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createTestPinia, mountWithPinia, createBookmark, createBookmarkArray } from '@/test-utils'
 import HomeView from '../HomeView.vue'
-import { useBookmarkStore } from '@/stores/bookmark'
-import { useGroupStore } from '@/stores/group'
-import { MockBookmarkApi } from '@/services/bookmarkApi.mock'
+import { useBookmarkStore } from '@/stores/bookmark/bookmark'
+import { useGroupStore } from '@/stores/group/group'
+import { MockBookmarkApi } from '@/services/bookmarkApi/bookmarkApi.mock'
 
 describe('HomeView', () => {
   let mockApi: MockBookmarkApi

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createTestPinia } from '@/test-utils'
-import { useThemeStore } from '../theme'
+import { useThemeStore } from './theme'
 import { mockMatchMedia } from '@/test-utils'
 
 describe('Theme Store', () => {

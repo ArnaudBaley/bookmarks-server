@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import EditBookmarkForm from '../EditBookmarkForm.vue'
+import EditBookmarkForm from './EditBookmarkForm.vue'
 import { createBookmark, mountWithPinia } from '@/test-utils'
 
 describe('EditBookmarkForm', () => {

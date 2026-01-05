@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { HttpGroupApi } from '../groupApi.http'
+import { HttpGroupApi } from './groupApi.http'
 import { createGroup, createGroupArray, createGroupDto } from '@/test-utils'
 
 describe('HttpGroupApi', () => {

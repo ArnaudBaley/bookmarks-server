@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createTestPinia } from '@/test-utils'
-import { useBookmarkStore } from '../bookmark'
+import { useBookmarkStore } from './bookmark'
 import { createBookmark, createBookmarkArray, createBookmarkDto } from '@/test-utils'
-import * as bookmarkApiModule from '@/services/bookmarkApi'
+import * as bookmarkApiModule from '@/services/bookmarkApi/bookmarkApi'
 import type { Bookmark } from '@/types/bookmark'
 
 describe('Bookmark Store', () => {

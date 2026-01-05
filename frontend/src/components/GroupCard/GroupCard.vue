@@ -2,8 +2,8 @@
 import { ref, computed } from 'vue'
 import type { Group } from '@/types/group'
 import type { Bookmark } from '@/types/bookmark'
-import { useBookmarkStore } from '@/stores/bookmark'
-import BookmarkCard from './BookmarkCard.vue'
+import { useBookmarkStore } from '@/stores/bookmark/bookmark'
+import BookmarkCard from '@/components/BookmarkCard/BookmarkCard.vue'
 
 interface Props {
   group: Group

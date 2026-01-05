@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createTestPinia } from '@/test-utils'
-import GroupCard from '../GroupCard.vue'
+import GroupCard from './GroupCard.vue'
 import { createGroup, createBookmark, createBookmarkArray } from '@/test-utils'
-import { useBookmarkStore } from '@/stores/bookmark'
+import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 
 // Mock DragEvent and DataTransfer for jsdom
 class MockDataTransfer {
