@@ -134,7 +134,6 @@ export const useGroupStore = defineStore('group', () => {
 
   function getBookmarksByGroup(groupId: string) {
     const bookmarkStore = useBookmarkStore()
-    const tabStore = useTabStore()
     return bookmarkStore.filteredBookmarks.filter(
       (bookmark) => bookmark.groupIds?.includes(groupId)
     )

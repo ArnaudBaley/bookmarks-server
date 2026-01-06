@@ -16,4 +16,3 @@ export class CreateBookmarkDto {
   @IsString({ each: true })
   groupIds?: string[];
 }
-

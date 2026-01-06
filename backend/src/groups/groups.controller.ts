@@ -84,4 +84,3 @@ export class GroupsController {
     await this.groupsService.removeBookmarkFromGroup(groupId, bookmarkId);
   }
 }
-

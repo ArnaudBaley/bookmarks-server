@@ -38,4 +38,3 @@ export class Group {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

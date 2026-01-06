@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -46,21 +50,21 @@ export class TabsService {
 
   async update(id: string, updateTabDto: UpdateTabDto): Promise<Tab> {
     const tab = await this.findOne(id);
-    
+
     if (updateTabDto.name !== undefined) {
       tab.name = updateTabDto.name;
     }
     if (updateTabDto.color !== undefined) {
       tab.color = updateTabDto.color || null;
     }
-    
+
     await this.tabRepository.save(tab);
     return this.findOne(id);
   }
 
   async remove(id: string): Promise<void> {
     const tab = await this.findOne(id);
-    
+
     // Check if tab has groups or bookmarks
     const groupsCount = await this.groupRepository.count({
       where: { tabId: id },
@@ -68,14 +72,13 @@ export class TabsService {
     const bookmarksCount = await this.bookmarkRepository.count({
       where: { tabId: id },
     });
-    
+
     if (groupsCount > 0 || bookmarksCount > 0) {
       throw new BadRequestException(
         `Cannot delete tab with ID ${id} because it contains ${groupsCount} groups and ${bookmarksCount} bookmarks`,
       );
     }
-    
+
     await this.tabRepository.remove(tab);
   }
 }
-

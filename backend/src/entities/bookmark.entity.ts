@@ -44,4 +44,3 @@ export class Bookmark {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

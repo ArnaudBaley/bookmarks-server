@@ -11,4 +11,3 @@ import { Group } from '../entities/group.entity';
   providers: [BookmarksService],
 })
 export class BookmarksModule {}
-

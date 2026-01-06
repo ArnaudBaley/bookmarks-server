@@ -13,4 +13,3 @@ export class UpdateGroupDto {
   @IsString()
   tabId?: string;
 }
-

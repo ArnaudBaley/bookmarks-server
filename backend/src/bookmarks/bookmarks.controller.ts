@@ -69,4 +69,3 @@ export class BookmarksController {
     await this.bookmarksService.remove(id);
   }
 }
-

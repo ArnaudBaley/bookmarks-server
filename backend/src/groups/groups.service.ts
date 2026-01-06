@@ -65,10 +65,7 @@ export class GroupsService {
     await this.groupRepository.remove(group);
   }
 
-  async addBookmarkToGroup(
-    groupId: string,
-    bookmarkId: string,
-  ): Promise<void> {
+  async addBookmarkToGroup(groupId: string, bookmarkId: string): Promise<void> {
     const group = await this.findOne(groupId);
     const bookmark = await this.bookmarkRepository.findOne({
       where: { id: bookmarkId },
@@ -111,4 +108,3 @@ export class GroupsService {
     }
   }
 }
-

@@ -54,10 +54,7 @@ export class TabsController {
   }
 
   @Put(':id')
-  async update(
-    @Param('id') id: string,
-    @Body() updateTabDto: UpdateTabDto,
-  ) {
+  async update(@Param('id') id: string, @Body() updateTabDto: UpdateTabDto) {
     const tab = await this.tabsService.update(id, updateTabDto);
     return {
       id: tab.id,
@@ -74,4 +71,3 @@ export class TabsController {
     await this.tabsService.remove(id);
   }
 }
-

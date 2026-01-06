@@ -90,4 +90,3 @@ export class BookmarksService {
     await this.bookmarkRepository.remove(bookmark);
   }
 }
-

@@ -24,7 +24,7 @@ export class TabsMigration implements OnModuleInit {
   private async migrateExistingData() {
     // Check if any tabs exist
     const existingTabs = await this.tabRepository.count();
-    
+
     if (existingTabs > 0) {
       // Migration already done
       return;
@@ -59,4 +59,3 @@ export class TabsMigration implements OnModuleInit {
     }
   }
 }
-

@@ -4,6 +4,7 @@ import { createTestPinia } from '@/test-utils'
 import GroupCard from './GroupCard.vue'
 import { createGroup, createBookmark, createBookmarkArray } from '@/test-utils'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
+import { useTabStore } from '@/stores/tab/tab'
 
 // Mock DragEvent and DataTransfer for jsdom
 class MockDataTransfer {
@@ -303,6 +304,8 @@ describe('GroupCard', () => {
     const group = createGroup({ id: 'group-id', name: 'Test Group' })
     const pinia = createTestPinia()
     const bookmarkStore = useBookmarkStore()
+    const tabStore = useTabStore()
+    tabStore.activeTabId = 'test-tab-id'
     vi.spyOn(bookmarkStore, 'addBookmark').mockResolvedValue(createBookmark())
 
     const wrapper = mount(GroupCard, {
@@ -332,6 +335,7 @@ describe('GroupCard', () => {
     expect(bookmarkStore.addBookmark).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://example.com',
+        tabId: 'test-tab-id',
         groupIds: ['group-id'],
       })
     )
@@ -341,6 +345,8 @@ describe('GroupCard', () => {
     const group = createGroup({ id: 'group-id', name: 'Test Group' })
     const pinia = createTestPinia()
     const bookmarkStore = useBookmarkStore()
+    const tabStore = useTabStore()
+    tabStore.activeTabId = 'test-tab-id'
     vi.spyOn(bookmarkStore, 'addBookmark').mockResolvedValue(createBookmark())
 
     const wrapper = mount(GroupCard, {
@@ -370,6 +376,7 @@ describe('GroupCard', () => {
     expect(bookmarkStore.addBookmark).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://example.com',
+        tabId: 'test-tab-id',
       })
     )
   })

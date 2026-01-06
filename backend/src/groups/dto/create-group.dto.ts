@@ -11,4 +11,3 @@ export class CreateGroupDto {
   @IsString()
   tabId?: string;
 }
-

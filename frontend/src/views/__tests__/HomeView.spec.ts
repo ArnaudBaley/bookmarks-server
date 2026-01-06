@@ -4,6 +4,7 @@ import { createTestPinia, mountWithPinia, createBookmark, createBookmarkArray } 
 import HomeView from '../HomeView.vue'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { useGroupStore } from '@/stores/group/group'
+import { useTabStore } from '@/stores/tab/tab'
 import { MockBookmarkApi } from '@/services/bookmarkApi/bookmarkApi.mock'
 
 describe('HomeView', () => {
@@ -17,11 +18,23 @@ describe('HomeView', () => {
     mockApi.clearStorage()
   })
 
+  // Helper function to set up tabs in tests
+  function setupTabs() {
+    const tabStore = useTabStore()
+    tabStore.tabs = [
+      { id: 'test-tab-id', name: 'Test Tab', color: '#3b82f6', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    ]
+    tabStore.activeTabId = 'test-tab-id'
+    vi.spyOn(tabStore, 'fetchTabs').mockResolvedValue(undefined)
+    return tabStore
+  }
+
   it('fetches bookmarks on mount', async () => {
     // Create Pinia instance and store before mounting
     const pinia = createTestPinia()
     const bookmarkStore = useBookmarkStore()
     const groupStore = useGroupStore()
+    setupTabs()
     const fetchBookmarksSpy = vi.spyOn(bookmarkStore, 'fetchBookmarks').mockResolvedValue(undefined)
     const fetchGroupsSpy = vi.spyOn(groupStore, 'fetchGroups').mockResolvedValue(undefined)
 
@@ -34,14 +47,20 @@ describe('HomeView', () => {
 
     // Wait for onMounted to execute
     await wrapper.vm.$nextTick()
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 100))
 
     expect(fetchBookmarksSpy).toHaveBeenCalledTimes(1)
     expect(fetchGroupsSpy).toHaveBeenCalledTimes(1)
   })
 
   it('displays loading state when bookmarks are being fetched', async () => {
-    const wrapper = mountWithPinia(HomeView)
+    const pinia = createTestPinia()
+    setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     const bookmarkStore = useBookmarkStore()
     const groupStore = useGroupStore()
 
@@ -57,7 +76,13 @@ describe('HomeView', () => {
   })
 
   it('displays error state with retry button when fetch fails', async () => {
-    const wrapper = mountWithPinia(HomeView)
+    const pinia = createTestPinia()
+    setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     const bookmarkStore = useBookmarkStore()
     const groupStore = useGroupStore()
 
@@ -79,9 +104,20 @@ describe('HomeView', () => {
   })
 
   it('calls fetchBookmarks when retry button is clicked', async () => {
-    const wrapper = mountWithPinia(HomeView)
+    const pinia = createTestPinia()
+    setupTabs()
     const bookmarkStore = useBookmarkStore()
     const groupStore = useGroupStore()
+    
+    // Clear any initial calls from mount
+    const fetchBookmarksSpy = vi.spyOn(bookmarkStore, 'fetchBookmarks').mockClear()
+    const fetchGroupsSpy = vi.spyOn(groupStore, 'fetchGroups').mockClear()
+
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
 
     bookmarkStore.error = 'Failed to fetch bookmarks'
     bookmarkStore.bookmarks = []
@@ -90,10 +126,11 @@ describe('HomeView', () => {
     groupStore.loading = false
     groupStore.error = null
 
-    const fetchBookmarksSpy = vi.spyOn(bookmarkStore, 'fetchBookmarks')
-    const fetchGroupsSpy = vi.spyOn(groupStore, 'fetchGroups')
-
     await wrapper.vm.$nextTick()
+    
+    // Clear calls from mount/watchers
+    fetchBookmarksSpy.mockClear()
+    fetchGroupsSpy.mockClear()
 
     // Find the retry button specifically
     const buttons = wrapper.findAll('button')
@@ -106,7 +143,13 @@ describe('HomeView', () => {
   })
 
   it('displays empty state message when no bookmarks exist', async () => {
-    const wrapper = mountWithPinia(HomeView)
+    const pinia = createTestPinia()
+    setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     const bookmarkStore = useBookmarkStore()
     const groupStore = useGroupStore()
 
@@ -123,11 +166,17 @@ describe('HomeView', () => {
   })
 
   it('renders bookmark cards when bookmarks exist', async () => {
-    const wrapper = mountWithPinia(HomeView)
+    const pinia = createTestPinia()
+    const tabStore = setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     const bookmarkStore = useBookmarkStore()
     const groupStore = useGroupStore()
 
-    const bookmarks = createBookmarkArray(3)
+    const bookmarks = createBookmarkArray(3).map(b => ({ ...b, tabId: tabStore.activeTabId! }))
     bookmarkStore.bookmarks = bookmarks
     bookmarkStore.loading = false
     bookmarkStore.error = null
@@ -178,7 +227,13 @@ describe('HomeView', () => {
   })
 
   it('handles add bookmark success and hides form', async () => {
-    const wrapper = mountWithPinia(HomeView)
+    const pinia = createTestPinia()
+    const tabStore = setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     const store = useBookmarkStore()
 
     const addBookmarkSpy = vi.spyOn(store, 'addBookmark').mockResolvedValue(createBookmark())
@@ -193,7 +248,7 @@ describe('HomeView', () => {
     await form.vm.$emit('submit', { name: 'Test', url: 'https://example.com' })
     await wrapper.vm.$nextTick()
 
-    expect(addBookmarkSpy).toHaveBeenCalledWith({ name: 'Test', url: 'https://example.com' })
+    expect(addBookmarkSpy).toHaveBeenCalledWith({ name: 'Test', url: 'https://example.com', tabId: tabStore.activeTabId })
 
     // Form should be hidden after successful submission
     const formAfterSubmit = wrapper.findComponent({ name: 'AddBookmarkForm' })
@@ -201,7 +256,13 @@ describe('HomeView', () => {
   })
 
   it('handles add bookmark error without hiding form', async () => {
-    const wrapper = mountWithPinia(HomeView)
+    const pinia = createTestPinia()
+    setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     const store = useBookmarkStore()
 
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -227,10 +288,16 @@ describe('HomeView', () => {
   })
 
   it('shows EditBookmarkForm when modify event is emitted', async () => {
-    const wrapper = mountWithPinia(HomeView)
+    const pinia = createTestPinia()
+    const tabStore = setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     const store = useBookmarkStore()
 
-    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark', tabId: tabStore.activeTabId! })
     store.bookmarks = [bookmark]
     await wrapper.vm.$nextTick()
 
@@ -244,12 +311,18 @@ describe('HomeView', () => {
   })
 
   it('handles update bookmark success and hides form', async () => {
-    const wrapper = mountWithPinia(HomeView)
+    const pinia = createTestPinia()
+    const tabStore = setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     const store = useBookmarkStore()
 
     const updateBookmarkSpy = vi.spyOn(store, 'updateBookmark').mockResolvedValue(createBookmark())
 
-    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark', tabId: tabStore.activeTabId! })
     store.bookmarks = [bookmark]
     await wrapper.vm.$nextTick()
 
@@ -271,12 +344,18 @@ describe('HomeView', () => {
   })
 
   it('handles delete from edit form success', async () => {
-    const wrapper = mountWithPinia(HomeView)
+    const pinia = createTestPinia()
+    const tabStore = setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     const store = useBookmarkStore()
 
     const removeBookmarkSpy = vi.spyOn(store, 'removeBookmark').mockResolvedValue(undefined)
 
-    const bookmark = createBookmark({ id: 'test-id' })
+    const bookmark = createBookmark({ id: 'test-id', tabId: tabStore.activeTabId! })
     store.bookmarks = [bookmark]
     await wrapper.vm.$nextTick()
 

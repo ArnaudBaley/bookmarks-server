@@ -14,4 +14,3 @@ import { Bookmark } from '../entities/bookmark.entity';
   exports: [TabsService],
 })
 export class TabsModule {}
-

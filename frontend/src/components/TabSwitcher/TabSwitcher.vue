@@ -32,31 +32,35 @@ function handleAddTab() {
 <template>
   <div class="mb-6 border-b border-[var(--color-border)]">
     <div class="flex items-center gap-2 overflow-x-auto pb-2">
-      <button
+      <div
         v-for="tab in tabs"
         :key="tab.id"
-        @click="handleTabClick(tab.id)"
-        class="group px-4 py-2 rounded-t-lg transition-all duration-200 cursor-pointer flex items-center gap-2 whitespace-nowrap border-b-2"
-        :class="
-          activeTabId === tab.id
-            ? 'bg-[var(--color-background-soft)] border-[var(--color-text)] text-[var(--color-text)] font-medium'
-            : 'border-transparent text-[var(--color-text)] opacity-70 hover:opacity-100 hover:bg-[var(--color-background-soft)]'
-        "
-        :style="
-          activeTabId === tab.id && tab.color
-            ? { borderBottomColor: tab.color }
-            : {}
-        "
+        class="group relative"
       >
-        <span
-          v-if="tab.color"
-          class="w-3 h-3 rounded-full flex-shrink-0"
-          :style="{ backgroundColor: tab.color }"
-        ></span>
-        <span>{{ tab.name }}</span>
+        <button
+          @click="handleTabClick(tab.id)"
+          class="px-4 py-2 rounded-t-lg transition-all duration-200 cursor-pointer flex items-center gap-2 whitespace-nowrap border-b-2"
+          :class="
+            activeTabId === tab.id
+              ? 'bg-[var(--color-background-soft)] border-[var(--color-text)] text-[var(--color-text)] font-medium'
+              : 'border-transparent text-[var(--color-text)] opacity-70 hover:opacity-100 hover:bg-[var(--color-background-soft)]'
+          "
+          :style="
+            activeTabId === tab.id && tab.color
+              ? { borderBottomColor: tab.color }
+              : {}
+          "
+        >
+          <span
+            v-if="tab.color"
+            class="w-3 h-3 rounded-full flex-shrink-0"
+            :style="{ backgroundColor: tab.color }"
+          ></span>
+          <span>{{ tab.name }}</span>
+        </button>
         <button
           @click.stop="handleTabEdit($event, tab)"
-          class="ml-1 opacity-0 group-hover:opacity-100 hover:opacity-100 p-1 rounded hover:bg-[var(--color-background-mute)] transition-opacity flex-shrink-0"
+          class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 hover:opacity-100 p-1 rounded hover:bg-[var(--color-background-mute)] transition-opacity flex-shrink-0"
           aria-label="Edit tab"
         >
           <svg
@@ -74,7 +78,7 @@ function handleAddTab() {
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
         </button>
-      </button>
+      </div>
       <button
         @click="handleAddTab"
         class="px-3 py-2 rounded-t-lg transition-all duration-200 cursor-pointer flex items-center justify-center text-[var(--color-text)] opacity-70 hover:opacity-100 hover:bg-[var(--color-background-soft)] border-b-2 border-transparent"

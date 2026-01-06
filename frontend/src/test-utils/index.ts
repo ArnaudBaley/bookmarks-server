@@ -40,6 +40,7 @@ export function createBookmark(overrides?: Partial<Bookmark>): Bookmark {
     id: 'test-id-1',
     name: 'Test Bookmark',
     url: 'https://example.com',
+    tabId: 'test-tab-id',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -53,6 +54,7 @@ export function createBookmarkDto(overrides?: Partial<CreateBookmarkDto>): Creat
   return {
     name: 'Test Bookmark',
     url: 'https://example.com',
+    tabId: 'test-tab-id',
     ...overrides,
   }
 }
@@ -153,6 +155,7 @@ export function createGroup(overrides?: Partial<Group>): Group {
     id: 'test-group-id-1',
     name: 'Test Group',
     color: '#3b82f6',
+    tabId: 'test-tab-id',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -166,6 +169,7 @@ export function createGroupDto(overrides?: Partial<CreateGroupDto>): CreateGroup
   return {
     name: 'Test Group',
     color: '#3b82f6',
+    tabId: 'test-tab-id',
     ...overrides,
   }
 }

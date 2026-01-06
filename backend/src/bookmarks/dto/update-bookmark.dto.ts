@@ -18,4 +18,3 @@ export class UpdateBookmarkDto {
   @IsString({ each: true })
   groupIds?: string[];
 }
-
