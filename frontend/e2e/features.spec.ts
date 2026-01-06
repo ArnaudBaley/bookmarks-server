@@ -11,6 +11,15 @@ interface Bookmark {
   url: string
   createdAt?: string
   groupIds?: string[]
+  tabId?: string
+}
+
+interface Tab {
+  id: string
+  name: string
+  color: string | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 /**
@@ -22,11 +31,30 @@ async function clearMockData(page: Page) {
     try {
       localStorage.removeItem('bookmarks-mock-data')
       localStorage.removeItem('groups-mock-data')
+      localStorage.removeItem('tabs-mock-data')
       localStorage.removeItem('theme')
     } catch {
       // Ignore errors if localStorage is not accessible
     }
   })
+}
+
+/**
+ * Helper function to set up a default tab in localStorage
+ * The app requires at least one tab to function properly
+ */
+async function setupDefaultTab(page: Page, tab?: Tab) {
+  const defaultTab: Tab = tab || {
+    id: 'default-tab-id',
+    name: 'Default Tab',
+    color: '#3b82f6',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  await page.evaluate((tabData) => {
+    localStorage.setItem('tabs-mock-data', JSON.stringify([tabData]))
+  }, defaultTab)
+  return defaultTab
 }
 
 /**
@@ -61,14 +89,27 @@ async function waitForBookmarksLoaded(page: Page) {
   await expect(page.getByRole('heading', { name: 'My Bookmarks' })).toBeVisible()
   // Wait for any async operations to complete
   await page.waitForLoadState('domcontentloaded')
+  // Wait for stores to be initialized by checking if tabs are loaded
+  await page.waitForFunction(() => {
+    const tabs = localStorage.getItem('tabs-mock-data')
+    return tabs !== null && JSON.parse(tabs).length > 0
+  }, { timeout: 5000 })
 }
 
 test.describe('Bookmark Management', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await clearMockData(page)
+    await setupDefaultTab(page)
     await page.reload()
     await waitForBookmarksLoaded(page)
+    // Ensure the tab is active by checking localStorage or waiting for it to be set
+    // The tab store should automatically set the first tab as active after fetchTabs
+    // Wait for tab store to initialize by checking if tabs are loaded
+    await page.waitForFunction(() => {
+      const tabs = localStorage.getItem('tabs-mock-data')
+      return tabs !== null && JSON.parse(tabs).length > 0
+    })
   })
 
   test('should add a new bookmark', async ({ page }) => {
@@ -123,13 +164,14 @@ test.describe('Bookmark Management', () => {
   })
 
   test('should edit an existing bookmark', async ({ page }) => {
-    // Set up initial bookmark
+    // Set up initial bookmark with tabId (using the default tab ID from beforeEach)
     await setupMockBookmarks(page, [
       {
         id: '1',
         name: 'Vue.js',
         url: 'https://vuejs.org',
         createdAt: new Date().toISOString(),
+        tabId: 'default-tab-id',
       },
     ])
 
@@ -183,6 +225,7 @@ test.describe('Bookmark Management', () => {
         name: 'Original Name',
         url: 'https://example.com',
         createdAt: new Date().toISOString(),
+        tabId: 'default-tab-id',
       },
     ])
 
@@ -219,6 +262,7 @@ test.describe('Bookmark Management', () => {
         name: 'Bookmark to Delete',
         url: 'https://example.com',
         createdAt: new Date().toISOString(),
+        tabId: 'default-tab-id',
       },
     ])
 
@@ -268,12 +312,14 @@ test.describe('Bookmark Management', () => {
   })
 
   test('should open bookmark URL in new tab when clicked', async ({ page, context }) => {
+    const defaultTab = await setupDefaultTab(page)
     await setupMockBookmarks(page, [
       {
         id: '1',
         name: 'Test Bookmark',
         url: 'https://example.com',
         createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
       },
     ])
 
@@ -301,6 +347,7 @@ test.describe('Form Validation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await clearMockData(page)
+    await setupDefaultTab(page)
     await page.reload()
     await waitForBookmarksLoaded(page)
   })
@@ -420,6 +467,7 @@ test.describe('Theme Toggle', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await clearMockData(page)
+    await setupDefaultTab(page)
     await page.reload()
     await waitForBookmarksLoaded(page)
   })
@@ -488,6 +536,7 @@ test.describe('UI State Management', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await clearMockData(page)
+    await setupDefaultTab(page)
     await page.reload()
     await waitForBookmarksLoaded(page)
   })
@@ -517,12 +566,14 @@ test.describe('UI State Management', () => {
   })
 
   test('should display bookmarks in ungrouped section', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
     await setupMockBookmarks(page, [
       {
         id: '1',
         name: 'Ungrouped Bookmark',
         url: 'https://example.com',
         createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
       },
     ])
 

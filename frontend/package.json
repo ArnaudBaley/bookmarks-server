@@ -17,6 +17,7 @@
     "test:e2e:take-snapshots": "playwright test e2e/snapshots.spec.ts --update-snapshots",
     "test:e2e:check-snapshots": "playwright test e2e/snapshots.spec.ts",
     "build-only": "vite build",
+    "clean": "rm -rf dist",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix --cache",
     "lint:check": "eslint . --cache",

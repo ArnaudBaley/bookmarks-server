@@ -20,10 +20,6 @@ export default defineConfig({
      * For example in `await expect(locator).toHaveText();`
      */
     timeout: 5000,
-    /**
-     * Screenshot comparison threshold
-     */
-    threshold: 0.2,
   },
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
@@ -38,7 +34,8 @@ export default defineConfig({
     /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
     actionTimeout: 0,
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.CI ? 'http://localhost:4173' : 'http://localhost:5173',
+    /* Use dedicated test port (5174) to avoid conflicts with Docker frontend (5173) */
+    baseURL: 'http://localhost:5174',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -53,18 +50,24 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        /* Disable service workers to prevent caching of resources */
+        serviceWorkers: 'block',
       },
     },
     {
       name: 'firefox',
       use: {
         ...devices['Desktop Firefox'],
+        /* Disable service workers to prevent caching of resources */
+        serviceWorkers: 'block',
       },
     },
     {
       name: 'webkit',
       use: {
         ...devices['Desktop Safari'],
+        /* Disable service workers to prevent caching of resources */
+        serviceWorkers: 'block',
       },
     },
 
@@ -106,12 +109,19 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     /**
-     * Use the dev server by default for faster feedback loop.
-     * Use the preview server on CI for more realistic testing.
-     * Always start a fresh server for e2e tests to ensure mock API is used.
+     * Always build fresh before running e2e tests to ensure latest code is tested.
+     * This prevents issues with stale cache or outdated builds.
+     * Use dedicated test port (5174) to avoid conflicts with Docker frontend (5173).
+     * 
+     * Build process:
+     * 1. Clear dist folder and build the application with --emptyOutDir flag
+     * 2. Preview the built application
+     * 
+     * Note: Using build-only ensures fresh build without type-check for faster e2e test startup.
+     * The --emptyOutDir flag ensures Vite clears the dist folder before building.
      */
-    command: process.env.CI ? 'npm run preview' : 'npm run dev',
-    port: process.env.CI ? 4173 : 5173,
+    command: 'npm run build-only -- --emptyOutDir && npm run preview -- --port 5174',
+    port: 5174,
     /**
      * Always start a fresh server for e2e tests to ensure environment variables
      * are properly set. This prevents reusing a server that was started without mocks.

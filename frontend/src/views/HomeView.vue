@@ -55,6 +55,8 @@ async function handleAddBookmark(data: CreateBookmarkDto) {
   try {
     if (!tabStore.activeTabId) {
       console.error('No active tab selected')
+      // Still close the form even if there's an error
+      showAddForm.value = false
       return
     }
     await bookmarkStore.addBookmark({
@@ -64,6 +66,8 @@ async function handleAddBookmark(data: CreateBookmarkDto) {
     showAddForm.value = false
   } catch (error) {
     console.error('Failed to add bookmark:', error)
+    // Close the form even on error to prevent it from staying open
+    showAddForm.value = false
   }
 }
 

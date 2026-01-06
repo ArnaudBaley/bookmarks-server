@@ -206,7 +206,9 @@ describe('ExportImportModal', () => {
       await wrapper.vm.$nextTick()
 
       expect(global.URL.createObjectURL).toHaveBeenCalled()
-      const blobCall = (global.URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const mockCalls = (global.URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls
+      expect(mockCalls[0]).toBeDefined()
+      const blobCall = mockCalls[0]?.[0]
       expect(blobCall).toBeInstanceOf(Blob)
       
       // Clean up
@@ -297,7 +299,7 @@ describe('ExportImportModal', () => {
           // Simulate success by calling onload callback
           setTimeout(() => {
             if (callbacks.onload) {
-              callbacks.onload({ target: { result: JSON.stringify(validImportData) } } as unknown as ProgressEvent<FileReader>)
+              callbacks.onload({ target: { result: JSON.stringify(validImportData) } })
             }
           }, 0)
         },
@@ -344,7 +346,7 @@ describe('ExportImportModal', () => {
           // Simulate success by calling onload callback
           setTimeout(() => {
             if (callbacks.onload) {
-              callbacks.onload({ target: { result: JSON.stringify(invalidData) } } as unknown as ProgressEvent<FileReader>)
+              callbacks.onload({ target: { result: JSON.stringify(invalidData) } })
             }
           }, 0)
         },
@@ -392,7 +394,7 @@ describe('ExportImportModal', () => {
           // Simulate success by calling onload callback
           setTimeout(() => {
             if (callbacks.onload) {
-              callbacks.onload({ target: { result: JSON.stringify(validImportData) } } as unknown as ProgressEvent<FileReader>)
+              callbacks.onload({ target: { result: JSON.stringify(validImportData) } })
             }
           }, 0)
         },
