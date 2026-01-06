@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { Bookmark, CreateBookmarkDto, UpdateBookmarkDto } from '@/types/bookmark'
 import { bookmarkApi } from '@/services/bookmarkApi/bookmarkApi'
+import { useTabStore } from '@/stores/tab/tab'
 
 export const useBookmarkStore = defineStore('bookmark', () => {
   const bookmarks = ref<Bookmark[]>([])
@@ -10,12 +11,18 @@ export const useBookmarkStore = defineStore('bookmark', () => {
 
   const bookmarksCount = computed(() => bookmarks.value.length)
 
+  const filteredBookmarks = computed(() => {
+    const tabStore = useTabStore()
+    if (!tabStore.activeTabId) return []
+    return bookmarks.value.filter((bookmark) => bookmark.tabId === tabStore.activeTabId)
+  })
+
   function getBookmarksByGroup(groupId: string) {
-    return bookmarks.value.filter((bookmark) => bookmark.groupIds?.includes(groupId))
+    return filteredBookmarks.value.filter((bookmark) => bookmark.groupIds?.includes(groupId))
   }
 
   function getUngroupedBookmarks() {
-    return bookmarks.value.filter(
+    return filteredBookmarks.value.filter(
       (bookmark) => !bookmark.groupIds || bookmark.groupIds.length === 0
     )
   }
@@ -24,7 +31,8 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     loading.value = true
     error.value = null
     try {
-      bookmarks.value = await bookmarkApi.getAllBookmarks()
+      const tabStore = useTabStore()
+      bookmarks.value = await bookmarkApi.getAllBookmarks(tabStore.activeTabId || undefined)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch bookmarks'
       console.error('Error fetching bookmarks:', err)
@@ -82,6 +90,7 @@ export const useBookmarkStore = defineStore('bookmark', () => {
 
   return {
     bookmarks,
+    filteredBookmarks,
     loading,
     error,
     bookmarksCount,

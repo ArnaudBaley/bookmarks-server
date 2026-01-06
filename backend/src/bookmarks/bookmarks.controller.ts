@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -18,12 +19,13 @@ export class BookmarksController {
   constructor(private readonly bookmarksService: BookmarksService) {}
 
   @Get()
-  async findAll() {
-    const bookmarks = await this.bookmarksService.findAll();
+  async findAll(@Query('tabId') tabId?: string) {
+    const bookmarks = await this.bookmarksService.findAll(tabId);
     return bookmarks.map((bookmark) => ({
       id: bookmark.id,
       name: bookmark.name,
       url: bookmark.url,
+      tabId: bookmark.tabId,
       groupIds: bookmark.groups?.map((group) => group.id) || [],
       createdAt: bookmark.createdAt?.toISOString(),
       updatedAt: bookmark.updatedAt?.toISOString(),
@@ -37,6 +39,7 @@ export class BookmarksController {
       id: bookmark.id,
       name: bookmark.name,
       url: bookmark.url,
+      tabId: bookmark.tabId,
       groupIds: bookmark.groups?.map((group) => group.id) || [],
       createdAt: bookmark.createdAt?.toISOString(),
       updatedAt: bookmark.updatedAt?.toISOString(),
@@ -53,6 +56,7 @@ export class BookmarksController {
       id: bookmark.id,
       name: bookmark.name,
       url: bookmark.url,
+      tabId: bookmark.tabId,
       groupIds: bookmark.groups?.map((group) => group.id) || [],
       createdAt: bookmark.createdAt?.toISOString(),
       updatedAt: bookmark.updatedAt?.toISOString(),

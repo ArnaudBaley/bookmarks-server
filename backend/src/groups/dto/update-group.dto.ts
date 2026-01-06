@@ -1,10 +1,16 @@
-import { IsString } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class UpdateGroupDto {
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
+  @IsOptional()
   @IsString()
-  color: string;
+  color?: string;
+
+  @IsOptional()
+  @IsString()
+  tabId?: string;
 }
 

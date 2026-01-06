@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -18,12 +19,13 @@ export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {}
 
   @Get()
-  async findAll() {
-    const groups = await this.groupsService.findAll();
+  async findAll(@Query('tabId') tabId?: string) {
+    const groups = await this.groupsService.findAll(tabId);
     return groups.map((group) => ({
       id: group.id,
       name: group.name,
       color: group.color,
+      tabId: group.tabId,
       createdAt: group.createdAt?.toISOString(),
       updatedAt: group.updatedAt?.toISOString(),
     }));
@@ -36,6 +38,7 @@ export class GroupsController {
       id: group.id,
       name: group.name,
       color: group.color,
+      tabId: group.tabId,
       createdAt: group.createdAt?.toISOString(),
       updatedAt: group.updatedAt?.toISOString(),
     };
@@ -51,6 +54,7 @@ export class GroupsController {
       id: group.id,
       name: group.name,
       color: group.color,
+      tabId: group.tabId,
       createdAt: group.createdAt?.toISOString(),
       updatedAt: group.updatedAt?.toISOString(),
     };

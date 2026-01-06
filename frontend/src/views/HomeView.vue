@@ -1,39 +1,66 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { useGroupStore } from '@/stores/group/group'
+import { useTabStore } from '@/stores/tab/tab'
 import BookmarkCard from '@/components/BookmarkCard/BookmarkCard.vue'
 import GroupCard from '@/components/GroupCard/GroupCard.vue'
 import AddBookmarkForm from '@/components/AddBookmarkForm/AddBookmarkForm.vue'
 import EditBookmarkForm from '@/components/EditBookmarkForm/EditBookmarkForm.vue'
 import AddGroupForm from '@/components/AddGroupForm/AddGroupForm.vue'
 import EditGroupForm from '@/components/EditGroupForm/EditGroupForm.vue'
+import TabSwitcher from '@/components/TabSwitcher/TabSwitcher.vue'
+import AddTabForm from '@/components/AddTabForm/AddTabForm.vue'
+import EditTabForm from '@/components/EditTabForm/EditTabForm.vue'
 import ThemeToggle from '@/components/ThemeToggle/ThemeToggle.vue'
 import ExportImportModal from '@/components/ExportImportModal/ExportImportModal.vue'
 import type { CreateBookmarkDto, UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
 import type { CreateGroupDto, UpdateGroupDto, Group } from '@/types/group'
+import type { CreateTabDto, UpdateTabDto, Tab } from '@/types/tab'
 
 const bookmarkStore = useBookmarkStore()
 const groupStore = useGroupStore()
+const tabStore = useTabStore()
 
 const showAddForm = ref(false)
 const showAddGroupForm = ref(false)
+const showAddTabForm = ref(false)
 const showExportImportModal = ref(false)
 const editingBookmark = ref<Bookmark | null>(null)
 const editingGroup = ref<Group | null>(null)
+const editingTab = ref<Tab | null>(null)
 const isDragOverUngrouped = ref(false)
 const isUngroupedExpanded = ref(true)
 
 const ungroupedBookmarks = computed(() => groupStore.getUngroupedBookmarks())
+const filteredGroups = computed(() => groupStore.filteredGroups)
 
-onMounted(() => {
-  bookmarkStore.fetchBookmarks()
-  groupStore.fetchGroups()
+// Watch for active tab changes and refetch data
+watch(() => tabStore.activeTabId, () => {
+  if (tabStore.activeTabId) {
+    bookmarkStore.fetchBookmarks()
+    groupStore.fetchGroups()
+  }
+})
+
+onMounted(async () => {
+  await tabStore.fetchTabs()
+  if (tabStore.activeTabId) {
+    bookmarkStore.fetchBookmarks()
+    groupStore.fetchGroups()
+  }
 })
 
 async function handleAddBookmark(data: CreateBookmarkDto) {
   try {
-    await bookmarkStore.addBookmark(data)
+    if (!tabStore.activeTabId) {
+      console.error('No active tab selected')
+      return
+    }
+    await bookmarkStore.addBookmark({
+      ...data,
+      tabId: tabStore.activeTabId,
+    })
     showAddForm.value = false
   } catch (error) {
     console.error('Failed to add bookmark:', error)
@@ -64,7 +91,14 @@ async function handleDeleteFromEditForm(id: string) {
 
 async function handleAddGroup(data: CreateGroupDto) {
   try {
-    await groupStore.addGroup(data)
+    if (!tabStore.activeTabId) {
+      console.error('No active tab selected')
+      return
+    }
+    await groupStore.addGroup({
+      ...data,
+      tabId: tabStore.activeTabId,
+    })
     showAddGroupForm.value = false
   } catch (error) {
     console.error('Failed to add group:', error)
@@ -90,6 +124,37 @@ async function handleDeleteGroup(id: string) {
     editingGroup.value = null
   } catch (error) {
     console.error('Failed to delete group:', error)
+  }
+}
+
+async function handleAddTab(data: CreateTabDto) {
+  try {
+    await tabStore.addTab(data)
+    showAddTabForm.value = false
+  } catch (error) {
+    console.error('Failed to add tab:', error)
+  }
+}
+
+async function handleModifyTab(tab: Tab) {
+  editingTab.value = tab
+}
+
+async function handleUpdateTab(id: string, data: UpdateTabDto) {
+  try {
+    await tabStore.updateTab(id, data)
+    editingTab.value = null
+  } catch (error) {
+    console.error('Failed to update tab:', error)
+  }
+}
+
+async function handleDeleteTab(id: string) {
+  try {
+    await tabStore.removeTab(id)
+    editingTab.value = null
+  } catch (error) {
+    console.error('Failed to delete tab:', error)
   }
 }
 
@@ -265,9 +330,14 @@ async function handleUngroupedDrop(event: DragEvent) {
   const name = extractNameFromUrl(normalizedUrl)
 
   try {
+    if (!tabStore.activeTabId) {
+      console.error('No active tab selected')
+      return
+    }
     await bookmarkStore.addBookmark({
       name,
       url: normalizedUrl,
+      tabId: tabStore.activeTabId,
       groupIds: [],
     })
   } catch (error) {
@@ -284,6 +354,27 @@ async function handleUngroupedDrop(event: DragEvent) {
       <h1 class="m-0 text-[var(--color-text)]">My Bookmarks</h1>
       <div class="flex gap-4 items-center">
         <ThemeToggle />
+        <button
+          class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
+          @click="showAddTabForm = true"
+          aria-label="Add new tab"
+          title="Add new tab"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+          </svg>
+        </button>
         <button
           class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
           @click="showAddForm = true"
@@ -352,8 +443,11 @@ async function handleUngroupedDrop(event: DragEvent) {
       </div>
     </div>
 
+    <!-- Tab Switcher -->
+    <TabSwitcher v-if="tabStore.tabs.length > 0" @tab-edit="handleModifyTab" @tab-add="showAddTabForm = true" />
+
     <div
-      v-if="(bookmarkStore.loading || groupStore.loading) && bookmarkStore.bookmarks.length === 0 && groupStore.groups.length === 0"
+      v-if="(bookmarkStore.loading || groupStore.loading || tabStore.loading) && bookmarkStore.bookmarks.length === 0 && groupStore.groups.length === 0"
       class="text-center py-12 text-[var(--color-text)]"
     >
       Loading bookmarks...
@@ -440,9 +534,9 @@ async function handleUngroupedDrop(event: DragEvent) {
       </div>
 
       <!-- Groups -->
-      <div v-if="groupStore.groups.length > 0">
+      <div v-if="filteredGroups.length > 0">
         <GroupCard
-          v-for="group in groupStore.groups"
+          v-for="group in filteredGroups"
           :key="group.id"
           :group="group"
           :bookmarks="groupStore.getBookmarksByGroup(group.id)"
@@ -468,6 +562,14 @@ async function handleUngroupedDrop(event: DragEvent) {
       @submit="handleUpdateGroup"
       @delete="handleDeleteGroup"
       @cancel="editingGroup = null"
+    />
+    <AddTabForm v-if="showAddTabForm" @submit="handleAddTab" @cancel="showAddTabForm = false" />
+    <EditTabForm
+      v-if="editingTab"
+      :tab="editingTab"
+      @submit="handleUpdateTab"
+      @delete="handleDeleteTab"
+      @cancel="editingTab = null"
     />
     <ExportImportModal v-if="showExportImportModal" @cancel="showExportImportModal = false" />
   </main>

@@ -3,11 +3,14 @@ import {
   PrimaryColumn,
   Column,
   ManyToMany,
+  ManyToOne,
+  JoinColumn,
   JoinTable,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Group } from './group.entity';
+import { Tab } from './tab.entity';
 
 @Entity('bookmarks')
 export class Bookmark {
@@ -19,6 +22,13 @@ export class Bookmark {
 
   @Column('text')
   url: string;
+
+  @Column('varchar', { length: 36, nullable: true })
+  tabId: string | null;
+
+  @ManyToOne(() => Tab)
+  @JoinColumn({ name: 'tabId' })
+  tab: Tab;
 
   @ManyToMany(() => Group, (group) => group.bookmarks)
   @JoinTable({

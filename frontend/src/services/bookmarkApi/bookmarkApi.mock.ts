@@ -33,10 +33,14 @@ export class MockBookmarkApi implements IBookmarkApi {
     await new Promise((resolve) => setTimeout(resolve, ms))
   }
 
-  async getAllBookmarks(): Promise<Bookmark[]> {
-    console.log('[MockBookmarkApi] Fetching all bookmarks')
+  async getAllBookmarks(tabId?: string): Promise<Bookmark[]> {
+    console.log('[MockBookmarkApi] Fetching all bookmarks', tabId ? `for tab ${tabId}` : '')
     await this.simulateDelay()
-    return this.getStorage()
+    const bookmarks = this.getStorage()
+    if (tabId) {
+      return bookmarks.filter((bookmark) => bookmark.tabId === tabId)
+    }
+    return bookmarks
   }
 
   async createBookmark(data: CreateBookmarkDto): Promise<Bookmark> {
@@ -48,6 +52,7 @@ export class MockBookmarkApi implements IBookmarkApi {
       id: crypto.randomUUID(),
       name: data.name,
       url: data.url,
+      tabId: data.tabId,
       groupIds: data.groupIds,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -70,8 +75,9 @@ export class MockBookmarkApi implements IBookmarkApi {
 
     const updatedBookmark: Bookmark = {
       ...bookmarks[bookmarkIndex],
-      name: data.name,
-      url: data.url,
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.url !== undefined && { url: data.url }),
+      ...(data.tabId !== undefined && { tabId: data.tabId }),
       groupIds: data.groupIds !== undefined ? data.groupIds : bookmarks[bookmarkIndex].groupIds,
       updatedAt: new Date().toISOString(),
     }

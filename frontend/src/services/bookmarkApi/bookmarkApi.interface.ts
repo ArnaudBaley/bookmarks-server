@@ -7,9 +7,10 @@ import type { Bookmark, CreateBookmarkDto, UpdateBookmarkDto } from '@/types/boo
 export interface IBookmarkApi {
   /**
    * Fetch all bookmarks
+   * @param tabId - Optional tab ID to filter bookmarks by tab
    * @returns Promise resolving to an array of bookmarks
    */
-  getAllBookmarks(): Promise<Bookmark[]>
+  getAllBookmarks(tabId?: string): Promise<Bookmark[]>
 
   /**
    * Create a new bookmark

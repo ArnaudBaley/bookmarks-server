@@ -8,6 +8,10 @@ export class CreateBookmarkDto {
   url: string;
 
   @IsOptional()
+  @IsString()
+  tabId?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   groupIds?: string[];

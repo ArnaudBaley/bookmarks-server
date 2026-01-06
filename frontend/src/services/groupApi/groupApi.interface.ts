@@ -7,9 +7,10 @@ import type { Group, CreateGroupDto, UpdateGroupDto } from '@/types/group'
 export interface IGroupApi {
   /**
    * Fetch all groups
+   * @param tabId - Optional tab ID to filter groups by tab
    * @returns Promise resolving to an array of groups
    */
-  getAllGroups(): Promise<Group[]>
+  getAllGroups(tabId?: string): Promise<Group[]>
 
   /**
    * Create a new group

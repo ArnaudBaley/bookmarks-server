@@ -11,9 +11,10 @@ export class HttpBookmarkApi implements IBookmarkApi {
     this.baseUrl = baseUrl
   }
 
-  async getAllBookmarks(): Promise<Bookmark[]> {
+  async getAllBookmarks(tabId?: string): Promise<Bookmark[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/bookmarks`)
+      const url = tabId ? `${this.baseUrl}/bookmarks?tabId=${tabId}` : `${this.baseUrl}/bookmarks`
+      const response = await fetch(url)
       if (!response.ok) {
         throw new Error(`Failed to fetch bookmarks: ${response.statusText}`)
       }

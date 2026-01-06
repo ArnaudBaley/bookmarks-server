@@ -1,14 +1,12 @@
 import { IsString, IsOptional } from 'class-validator';
 
-export class CreateGroupDto {
+export class UpdateTabDto {
+  @IsOptional()
   @IsString()
-  name: string;
-
-  @IsString()
-  color: string;
+  name?: string;
 
   @IsOptional()
   @IsString()
-  tabId?: string;
+  color?: string;
 }
 

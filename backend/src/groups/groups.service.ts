@@ -16,8 +16,10 @@ export class GroupsService {
     private bookmarkRepository: Repository<Bookmark>,
   ) {}
 
-  async findAll(): Promise<Group[]> {
+  async findAll(tabId?: string): Promise<Group[]> {
+    const where = tabId ? { tabId } : {};
     return this.groupRepository.find({
+      where,
       relations: ['bookmarks'],
     });
   }
@@ -38,14 +40,22 @@ export class GroupsService {
       id: uuidv4(),
       name: createGroupDto.name,
       color: createGroupDto.color,
+      tabId: createGroupDto.tabId || null,
     });
     return this.groupRepository.save(group);
   }
 
   async update(id: string, updateGroupDto: UpdateGroupDto): Promise<Group> {
     const group = await this.findOne(id);
-    group.name = updateGroupDto.name;
-    group.color = updateGroupDto.color;
+    if (updateGroupDto.name !== undefined) {
+      group.name = updateGroupDto.name;
+    }
+    if (updateGroupDto.color !== undefined) {
+      group.color = updateGroupDto.color;
+    }
+    if (updateGroupDto.tabId !== undefined) {
+      group.tabId = updateGroupDto.tabId;
+    }
     await this.groupRepository.save(group);
     return this.findOne(id);
   }

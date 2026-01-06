@@ -1,11 +1,17 @@
 import { IsString, IsUrl, IsOptional, IsArray } from 'class-validator';
 
 export class UpdateBookmarkDto {
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
+  @IsOptional()
   @IsUrl()
-  url: string;
+  url?: string;
+
+  @IsOptional()
+  @IsString()
+  tabId?: string;
 
   @IsOptional()
   @IsArray()

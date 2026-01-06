@@ -51,10 +51,14 @@ export class MockGroupApi implements IGroupApi {
     await new Promise((resolve) => setTimeout(resolve, ms))
   }
 
-  async getAllGroups(): Promise<Group[]> {
-    console.log('[MockGroupApi] Fetching all groups')
+  async getAllGroups(tabId?: string): Promise<Group[]> {
+    console.log('[MockGroupApi] Fetching all groups', tabId ? `for tab ${tabId}` : '')
     await this.simulateDelay()
-    return this.getGroupsStorage()
+    const groups = this.getGroupsStorage()
+    if (tabId) {
+      return groups.filter((group) => group.tabId === tabId)
+    }
+    return groups
   }
 
   async createGroup(data: CreateGroupDto): Promise<Group> {
@@ -66,6 +70,7 @@ export class MockGroupApi implements IGroupApi {
       id: crypto.randomUUID(),
       name: data.name,
       color: data.color,
+      tabId: data.tabId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -87,8 +92,9 @@ export class MockGroupApi implements IGroupApi {
 
     const updatedGroup: Group = {
       ...groups[groupIndex],
-      name: data.name,
-      color: data.color,
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.color !== undefined && { color: data.color }),
+      ...(data.tabId !== undefined && { tabId: data.tabId }),
       updatedAt: new Date().toISOString(),
     }
     

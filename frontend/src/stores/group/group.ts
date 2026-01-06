@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import type { Group, CreateGroupDto, UpdateGroupDto } from '@/types/group'
 import { groupApi } from '@/services/groupApi/groupApi'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
+import { useTabStore } from '@/stores/tab/tab'
 
 export const useGroupStore = defineStore('group', () => {
   const groups = ref<Group[]>([])
@@ -15,11 +16,18 @@ export const useGroupStore = defineStore('group', () => {
     return (id: string) => groups.value.find((group) => group.id === id)
   })
 
+  const filteredGroups = computed(() => {
+    const tabStore = useTabStore()
+    if (!tabStore.activeTabId) return []
+    return groups.value.filter((group) => group.tabId === tabStore.activeTabId)
+  })
+
   async function fetchGroups() {
     loading.value = true
     error.value = null
     try {
-      groups.value = await groupApi.getAllGroups()
+      const tabStore = useTabStore()
+      groups.value = await groupApi.getAllGroups(tabStore.activeTabId || undefined)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch groups'
       console.error('Error fetching groups:', err)
@@ -126,20 +134,22 @@ export const useGroupStore = defineStore('group', () => {
 
   function getBookmarksByGroup(groupId: string) {
     const bookmarkStore = useBookmarkStore()
-    return bookmarkStore.bookmarks.filter(
+    const tabStore = useTabStore()
+    return bookmarkStore.filteredBookmarks.filter(
       (bookmark) => bookmark.groupIds?.includes(groupId)
     )
   }
 
   function getUngroupedBookmarks() {
     const bookmarkStore = useBookmarkStore()
-    return bookmarkStore.bookmarks.filter(
+    return bookmarkStore.filteredBookmarks.filter(
       (bookmark) => !bookmark.groupIds || bookmark.groupIds.length === 0
     )
   }
 
   return {
     groups,
+    filteredGroups,
     loading,
     error,
     groupsCount,

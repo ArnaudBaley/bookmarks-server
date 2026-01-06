@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import type { Group } from '@/types/group'
 import type { Bookmark } from '@/types/bookmark'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
+import { useTabStore } from '@/stores/tab/tab'
 import BookmarkCard from '@/components/BookmarkCard/BookmarkCard.vue'
 
 interface Props {
@@ -168,9 +169,15 @@ async function handleDrop(event: DragEvent) {
   const name = extractNameFromUrl(normalizedUrl)
 
   try {
+    const tabStore = useTabStore()
+    if (!tabStore.activeTabId) {
+      console.error('No active tab selected')
+      return
+    }
     await bookmarkStore.addBookmark({
       name,
       url: normalizedUrl,
+      tabId: tabStore.activeTabId,
       groupIds: [props.group.id],
     })
   } catch (error) {

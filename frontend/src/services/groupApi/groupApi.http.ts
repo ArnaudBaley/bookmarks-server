@@ -11,9 +11,10 @@ export class HttpGroupApi implements IGroupApi {
     this.baseUrl = baseUrl
   }
 
-  async getAllGroups(): Promise<Group[]> {
+  async getAllGroups(tabId?: string): Promise<Group[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/groups`)
+      const url = tabId ? `${this.baseUrl}/groups?tabId=${tabId}` : `${this.baseUrl}/groups`
+      const response = await fetch(url)
       if (!response.ok) {
         throw new Error(`Failed to fetch groups: ${response.statusText}`)
       }
