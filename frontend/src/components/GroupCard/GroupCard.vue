@@ -215,7 +215,7 @@ async function handleDrop(event: DragEvent) {
         <button
           class="p-1.5 opacity-60 hover:opacity-100 flex-shrink-0 rounded cursor-pointer transition-opacity duration-200 active:scale-[0.95] text-[var(--color-text)]"
           @click.stop="handleModify"
-          aria-label="Edit group"
+          aria-label="Modify group"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

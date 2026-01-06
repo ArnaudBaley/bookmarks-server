@@ -102,6 +102,33 @@ export class MockTabApi implements ITabApi {
     const tabs = this.getStorage()
     const filtered = tabs.filter((tab) => tab.id !== id)
     this.setStorage(filtered)
+
+    // Cascade delete: Remove all groups and bookmarks associated with this tab
+    if (typeof window !== 'undefined') {
+      // Delete groups
+      const groupsStorage = localStorage.getItem('groups-mock-data')
+      if (groupsStorage) {
+        try {
+          const groups = JSON.parse(groupsStorage)
+          const remainingGroups = groups.filter((group: { tabId?: string | null }) => group.tabId !== id)
+          localStorage.setItem('groups-mock-data', JSON.stringify(remainingGroups))
+        } catch {
+          // Ignore parse errors
+        }
+      }
+
+      // Delete bookmarks
+      const bookmarksStorage = localStorage.getItem('bookmarks-mock-data')
+      if (bookmarksStorage) {
+        try {
+          const bookmarks = JSON.parse(bookmarksStorage)
+          const remainingBookmarks = bookmarks.filter((bookmark: { tabId?: string | null }) => bookmark.tabId !== id)
+          localStorage.setItem('bookmarks-mock-data', JSON.stringify(remainingBookmarks))
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    }
   }
 
   /**

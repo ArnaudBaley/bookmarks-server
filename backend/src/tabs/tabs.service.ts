@@ -1,7 +1,6 @@
 import {
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -65,20 +64,37 @@ export class TabsService {
   async remove(id: string): Promise<void> {
     const tab = await this.findOne(id);
 
-    // Check if tab has groups or bookmarks
-    const groupsCount = await this.groupRepository.count({
+    // Find all groups associated with this tab
+    const groups = await this.groupRepository.find({
       where: { tabId: id },
-    });
-    const bookmarksCount = await this.bookmarkRepository.count({
-      where: { tabId: id },
+      relations: ['bookmarks'],
     });
 
-    if (groupsCount > 0 || bookmarksCount > 0) {
-      throw new BadRequestException(
-        `Cannot delete tab with ID ${id} because it contains ${groupsCount} groups and ${bookmarksCount} bookmarks`,
-      );
+    // Find all bookmarks associated with this tab
+    const bookmarks = await this.bookmarkRepository.find({
+      where: { tabId: id },
+      relations: ['groups'],
+    });
+
+    // Remove bookmarks from groups (clean up ManyToMany relationships)
+    for (const group of groups) {
+      if (group.bookmarks && group.bookmarks.length > 0) {
+        group.bookmarks = [];
+        await this.groupRepository.save(group);
+      }
     }
 
+    // Delete all groups associated with this tab
+    if (groups.length > 0) {
+      await this.groupRepository.remove(groups);
+    }
+
+    // Delete all bookmarks associated with this tab
+    if (bookmarks.length > 0) {
+      await this.bookmarkRepository.remove(bookmarks);
+    }
+
+    // Finally, delete the tab itself
     await this.tabRepository.remove(tab);
   }
 }

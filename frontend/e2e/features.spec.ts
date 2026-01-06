@@ -603,3 +603,567 @@ test.describe('UI State Management', () => {
   })
 })
 
+/**
+ * Helper function to get tabs from localStorage
+ */
+async function getMockTabs(page: Page): Promise<Tab[]> {
+  return await page.evaluate(() => {
+    const stored = localStorage.getItem('tabs-mock-data')
+    if (!stored) return []
+    try {
+      return JSON.parse(stored)
+    } catch {
+      return []
+    }
+  })
+}
+
+/**
+ * Helper function to set up mock tabs in localStorage
+ */
+async function setupMockTabs(page: Page, tabs: Tab[]) {
+  await page.evaluate((tabsData) => {
+    localStorage.setItem('tabs-mock-data', JSON.stringify(tabsData))
+  }, tabs)
+}
+
+test.describe('Tab Management', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await clearMockData(page)
+    await setupDefaultTab(page)
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+  })
+
+  test('should add a new tab', async ({ page }) => {
+    // Click the add tab button (in TabSwitcher)
+    const addTabButton = page.getByRole('button', { name: /add new tab/i })
+    await addTabButton.click()
+
+    // Wait for the form to be visible
+    await expect(page.getByRole('heading', { name: 'Add New Tab' })).toBeVisible()
+
+    // Fill in the form
+    const nameInput = page.getByLabel('Name')
+    await nameInput.fill('Work Tab')
+
+    // Submit the form
+    const submitButton = page.getByRole('button', { name: 'Add Tab' })
+    await submitButton.click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Add New Tab' })).toBeHidden()
+
+    // Verify the tab appears in the UI
+    await expect(page.getByText('Work Tab')).toBeVisible()
+
+    // Verify tab was saved to localStorage
+    const tabs = await getMockTabs(page)
+    expect(tabs.length).toBe(2) // Default tab + new tab
+    expect(tabs.some(tab => tab.name === 'Work Tab')).toBe(true)
+  })
+
+  test('should edit an existing tab', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    await setupMockTabs(page, [
+      defaultTab,
+      {
+        id: 'tab-2',
+        name: 'Original Tab Name',
+        color: '#3b82f6',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Find the tab and click its edit button
+    // The edit button appears on hover, so we need to hover first
+    const tabButton = page.getByRole('button', { name: 'Original Tab Name' })
+    await tabButton.hover()
+    
+    // Click the edit button (it has aria-label="Edit tab")
+    // Find the edit button that's a sibling of the tab button (both are in a group div)
+    const tabGroup = tabButton.locator('..') // parent div with class "group relative"
+    const editButton = tabGroup.getByRole('button', { name: 'Edit tab' })
+    await editButton.click()
+
+    // Wait for edit form
+    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeVisible()
+
+    // Verify form is pre-filled
+    const nameInput = page.getByLabel('Name')
+    await expect(nameInput).toHaveValue('Original Tab Name')
+
+    // Modify the tab
+    await nameInput.clear()
+    await nameInput.fill('Updated Tab Name')
+
+    // Submit changes
+    await page.getByRole('button', { name: 'Update Tab' }).click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeHidden()
+
+    // Verify changes are visible
+    await expect(page.getByText('Updated Tab Name')).toBeVisible()
+
+    // Verify changes persisted in localStorage
+    const tabs = await getMockTabs(page)
+    const updatedTab = tabs.find(tab => tab.id === 'tab-2')
+    expect(updatedTab?.name).toBe('Updated Tab Name')
+  })
+
+  test('should delete a tab', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    await setupMockTabs(page, [
+      defaultTab,
+      {
+        id: 'tab-to-delete',
+        name: 'Tab to Delete',
+        color: '#ef4444',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Verify tab exists
+    await expect(page.getByText('Tab to Delete')).toBeVisible()
+
+    // Find the tab and click its edit button
+    const tabButton = page.getByRole('button', { name: 'Tab to Delete' })
+    await tabButton.hover()
+    
+    // Click the edit button - find it within the tab group
+    const tabGroup = tabButton.locator('..') // parent div with class "group relative"
+    const editButton = tabGroup.getByRole('button', { name: 'Edit tab' })
+    await editButton.click()
+
+    // Wait for edit form
+    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeVisible()
+
+    // Click delete button - this should show confirmation dialog
+    const deleteButton = page.getByRole('button', { name: 'Delete tab' })
+    await deleteButton.click()
+
+    // Wait for confirmation dialog to appear
+    await expect(page.getByRole('heading', { name: 'Delete Tab' })).toBeVisible()
+    await expect(page.getByText(/Are you sure you want to delete the tab/)).toBeVisible()
+    await expect(page.getByText(/This will permanently delete/)).toBeVisible()
+
+    // Confirm deletion
+    const confirmDeleteButton = page.getByRole('button', { name: 'Delete Tab' })
+    await confirmDeleteButton.click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Delete Tab' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeHidden()
+
+    // Verify tab is removed from UI
+    await expect(page.getByText('Tab to Delete')).toBeHidden()
+
+    // Verify tab was removed from localStorage
+    const tabs = await getMockTabs(page)
+    expect(tabs.length).toBe(1) // Only default tab should remain
+    expect(tabs.find(tab => tab.id === 'tab-to-delete')).toBeUndefined()
+  })
+
+  test('should cancel tab deletion when cancel is clicked in confirmation dialog', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    await setupMockTabs(page, [
+      defaultTab,
+      {
+        id: 'tab-to-keep',
+        name: 'Tab to Keep',
+        color: '#ef4444',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Verify tab exists
+    await expect(page.getByText('Tab to Keep')).toBeVisible()
+
+    // Find the tab and click its edit button
+    const tabButton = page.getByRole('button', { name: 'Tab to Keep' })
+    await tabButton.hover()
+    
+    const tabGroup = tabButton.locator('..')
+    const editButton = tabGroup.getByRole('button', { name: 'Edit tab' })
+    await editButton.click()
+
+    // Wait for edit form
+    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeVisible()
+
+    // Click delete button - this should show confirmation dialog
+    const deleteButton = page.getByRole('button', { name: 'Delete tab' })
+    await deleteButton.click()
+
+    // Wait for confirmation dialog to appear
+    await expect(page.getByRole('heading', { name: 'Delete Tab' })).toBeVisible()
+
+    // Click cancel button
+    const cancelButton = page.getByRole('button', { name: 'Cancel' })
+    await cancelButton.click()
+
+    // Wait for confirmation dialog to close and edit form to be visible again
+    await expect(page.getByRole('heading', { name: 'Delete Tab' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeVisible()
+
+    // Close the edit form
+    const closeButton = page.getByRole('button', { name: 'Cancel' }).first()
+    await closeButton.click()
+
+    // Verify tab still exists
+    await expect(page.getByText('Tab to Keep')).toBeVisible()
+
+    // Verify tab was not removed from localStorage
+    const tabs = await getMockTabs(page)
+    expect(tabs.length).toBe(2) // Both tabs should remain
+    expect(tabs.find(tab => tab.id === 'tab-to-keep')).toBeDefined()
+  })
+
+  test('should delete tab with associated groups and bookmarks (cascade deletion)', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    const tabToDelete = {
+      id: 'tab-to-delete',
+      name: 'Tab to Delete',
+      color: '#ef4444',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    await setupMockTabs(page, [defaultTab, tabToDelete])
+
+    // Set up groups and bookmarks for the tab to delete
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-in-tab',
+        name: 'Group in Tab',
+        color: '#3b82f6',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, tabToDelete.id)
+
+    await setupMockBookmarks(page, [
+      {
+        id: 'bookmark-1',
+        name: 'Bookmark in Tab',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: tabToDelete.id,
+      },
+      {
+        id: 'bookmark-2',
+        name: 'Another Bookmark',
+        url: 'https://example2.com',
+        createdAt: new Date().toISOString(),
+        tabId: tabToDelete.id,
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Switch to the tab to delete
+    const tabButton = page.getByRole('button', { name: 'Tab to Delete' })
+    await tabButton.click()
+    await waitForBookmarksLoaded(page)
+
+    // Verify group and bookmarks exist
+    await expect(page.getByText('Group in Tab')).toBeVisible()
+    await expect(page.getByText('Bookmark in Tab')).toBeVisible()
+    await expect(page.getByText('Another Bookmark')).toBeVisible()
+
+    // Open edit form for the tab
+    await tabButton.hover()
+    const tabGroup = tabButton.locator('..')
+    const editButton = tabGroup.getByRole('button', { name: 'Edit tab' })
+    await editButton.click()
+    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeVisible()
+
+    // Click delete button and confirm
+    const deleteButton = page.getByRole('button', { name: 'Delete tab' })
+    await deleteButton.click()
+    await expect(page.getByRole('heading', { name: 'Delete Tab' })).toBeVisible()
+    
+    const confirmDeleteButton = page.getByRole('button', { name: 'Delete Tab' })
+    await confirmDeleteButton.click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Delete Tab' })).toBeHidden()
+
+    // Wait for UI to update after deletion
+    await waitForBookmarksLoaded(page)
+
+    // Verify tab is removed from UI
+    await expect(page.getByText('Tab to Delete')).toBeHidden()
+
+    // Verify groups and bookmarks from deleted tab are not visible in UI
+    // (App should have switched to default tab which has no groups/bookmarks)
+    await expect(page.getByText('Group in Tab')).toBeHidden()
+    await expect(page.getByText('Bookmark in Tab')).toBeHidden()
+    await expect(page.getByText('Another Bookmark')).toBeHidden()
+
+    // Verify tab was removed from localStorage
+    const tabs = await getMockTabs(page)
+    expect(tabs.length).toBe(1) // Only default tab should remain
+    expect(tabs.find(tab => tab.id === 'tab-to-delete')).toBeUndefined()
+
+    // Verify groups were also deleted (check localStorage)
+    const groups = await page.evaluate(() => {
+      const stored = localStorage.getItem('groups-mock-data')
+      if (!stored) return []
+      try {
+        return JSON.parse(stored)
+      } catch {
+        return []
+      }
+    })
+    expect(groups.length).toBe(0)
+
+    // Verify bookmarks were also deleted
+    const bookmarks = await getMockBookmarks(page)
+    expect(bookmarks.length).toBe(0)
+  })
+
+  test('should switch between tabs', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    await setupMockTabs(page, [
+      defaultTab,
+      {
+        id: 'tab-2',
+        name: 'Second Tab',
+        color: '#10b981',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ])
+
+    // Set up bookmarks for each tab
+    await setupMockBookmarks(page, [
+      {
+        id: '1',
+        name: 'Bookmark in Default Tab',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+      },
+      {
+        id: '2',
+        name: 'Bookmark in Second Tab',
+        url: 'https://example2.com',
+        createdAt: new Date().toISOString(),
+        tabId: 'tab-2',
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Verify default tab is active and shows its bookmark
+    await expect(page.getByText('Bookmark in Default Tab')).toBeVisible()
+    await expect(page.getByText('Bookmark in Second Tab')).toBeHidden()
+
+    // Click on second tab
+    const secondTabButton = page.getByRole('button', { name: 'Second Tab' })
+    await secondTabButton.click()
+
+    // Wait for bookmarks to reload
+    await waitForBookmarksLoaded(page)
+
+    // Verify second tab is active and shows its bookmark
+    await expect(page.getByText('Bookmark in Second Tab')).toBeVisible()
+    await expect(page.getByText('Bookmark in Default Tab')).toBeHidden()
+
+    // Switch back to default tab
+    const defaultTabButton = page.getByRole('button', { name: defaultTab.name })
+    await defaultTabButton.click()
+
+    // Wait for bookmarks to reload
+    await waitForBookmarksLoaded(page)
+
+    // Verify default tab is active again
+    await expect(page.getByText('Bookmark in Default Tab')).toBeVisible()
+    await expect(page.getByText('Bookmark in Second Tab')).toBeHidden()
+  })
+
+  test('should switch to first available tab when active tab is deleted', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    await setupMockTabs(page, [
+      defaultTab,
+      {
+        id: 'tab-2',
+        name: 'Second Tab',
+        color: '#10b981',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Verify default tab is active
+    const defaultTabButton = page.getByRole('button', { name: defaultTab.name })
+    await expect(defaultTabButton).toBeVisible()
+
+    // Delete the default tab
+    await defaultTabButton.hover()
+    const tabGroup = defaultTabButton.locator('..') // parent div with class "group relative"
+    const editButton = tabGroup.getByRole('button', { name: 'Edit tab' })
+    await editButton.click()
+    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeVisible()
+    
+    // Click delete button - this should show confirmation dialog
+    const deleteButton = page.getByRole('button', { name: 'Delete tab' })
+    await deleteButton.click()
+
+    // Wait for confirmation dialog and confirm deletion
+    await expect(page.getByRole('heading', { name: 'Delete Tab' })).toBeVisible()
+    const confirmDeleteButton = page.getByRole('button', { name: 'Delete Tab' })
+    await confirmDeleteButton.click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Delete Tab' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeHidden()
+
+    // Verify second tab is now active (should be visible and active)
+    await expect(page.getByText('Second Tab')).toBeVisible()
+    // The active tab should have the active styling (we can check if it's visible)
+    const secondTabButton = page.getByRole('button', { name: 'Second Tab' })
+    await expect(secondTabButton).toBeVisible()
+  })
+})
+
+test.describe('Group Management', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await clearMockData(page)
+    await setupDefaultTab(page)
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+  })
+
+  test('should add a new group', async ({ page }) => {
+    // Click the add group button
+    const addGroupButton = page.getByRole('button', { name: /add new group/i })
+    await addGroupButton.click()
+
+    // Wait for the form to be visible
+    await expect(page.getByRole('heading', { name: 'Add New Group' })).toBeVisible()
+
+    // Fill in the form
+    const nameInput = page.getByLabel('Name')
+    await nameInput.fill('Work Group')
+
+    // Submit the form
+    const submitButton = page.getByRole('button', { name: 'Add Group' })
+    await submitButton.click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Add New Group' })).toBeHidden()
+
+    // Verify the group appears in the UI (this will wait for it to appear)
+    await expect(page.getByText('Work Group')).toBeVisible({ timeout: 10000 })
+  })
+
+  test('should edit an existing group', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    
+    // Set up a group in localStorage (via mock API)
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-1',
+        name: 'Original Group Name',
+        color: '#3b82f6',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Verify group is visible
+    await expect(page.getByText('Original Group Name')).toBeVisible()
+
+    // Click modify button on the group
+    const modifyButton = page.getByLabel('Modify group').first()
+    await modifyButton.click()
+
+    // Wait for edit form
+    await expect(page.getByRole('heading', { name: 'Edit Group' })).toBeVisible()
+
+    // Verify form is pre-filled
+    const nameInput = page.getByLabel('Name')
+    await expect(nameInput).toHaveValue('Original Group Name')
+
+    // Modify the group
+    await nameInput.clear()
+    await nameInput.fill('Updated Group Name')
+
+    // Submit changes
+    await page.getByRole('button', { name: 'Update Group' }).click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Edit Group' })).toBeHidden()
+
+    // Verify changes are visible
+    await expect(page.getByText('Updated Group Name')).toBeVisible()
+  })
+
+  test('should delete a group', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    
+    // Set up a group in localStorage
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-to-delete',
+        name: 'Group to Delete',
+        color: '#ef4444',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Verify group exists
+    await expect(page.getByText('Group to Delete')).toBeVisible()
+
+    // Click modify button
+    const modifyButton = page.getByLabel('Modify group').first()
+    await modifyButton.click()
+
+    // Wait for edit form
+    await expect(page.getByRole('heading', { name: 'Edit Group' })).toBeVisible()
+
+    // Click delete button
+    const deleteButton = page.getByRole('button', { name: 'Delete group' })
+    await deleteButton.click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Edit Group' })).toBeHidden()
+
+    // Verify group is removed from UI
+    await expect(page.getByText('Group to Delete')).toBeHidden()
+  })
+})
+

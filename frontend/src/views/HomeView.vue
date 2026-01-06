@@ -97,6 +97,8 @@ async function handleAddGroup(data: CreateGroupDto) {
   try {
     if (!tabStore.activeTabId) {
       console.error('No active tab selected')
+      // Still close the form even if there's an error
+      showAddGroupForm.value = false
       return
     }
     await groupStore.addGroup({
@@ -106,6 +108,8 @@ async function handleAddGroup(data: CreateGroupDto) {
     showAddGroupForm.value = false
   } catch (error) {
     console.error('Failed to add group:', error)
+    // Close the form even on error to prevent it from staying open
+    showAddGroupForm.value = false
   }
 }
 
@@ -142,6 +146,8 @@ async function handleAddTab(data: CreateTabDto) {
 
 async function handleModifyTab(tab: Tab) {
   editingTab.value = tab
+  // Clear any previous errors when opening the form
+  tabStore.error = null
 }
 
 async function handleUpdateTab(id: string, data: UpdateTabDto) {
@@ -571,9 +577,10 @@ async function handleUngroupedDrop(event: DragEvent) {
     <EditTabForm
       v-if="editingTab"
       :tab="editingTab"
+      :error="tabStore.error"
       @submit="handleUpdateTab"
       @delete="handleDeleteTab"
-      @cancel="editingTab = null"
+      @cancel="() => { editingTab = null; tabStore.error = null }"
     />
     <ExportImportModal v-if="showExportImportModal" @cancel="showExportImportModal = false" />
   </main>

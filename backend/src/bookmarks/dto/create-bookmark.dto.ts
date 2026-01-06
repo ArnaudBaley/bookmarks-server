@@ -1,10 +1,11 @@
-import { IsString, IsUrl, IsOptional, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsArray } from 'class-validator';
+import { IsValidUrl } from '../../common/validators/is-valid-url.validator';
 
 export class CreateBookmarkDto {
   @IsString()
   name: string;
 
-  @IsUrl()
+  @IsValidUrl({ message: 'url must be a valid URL address' })
   url: string;
 
   @IsOptional()

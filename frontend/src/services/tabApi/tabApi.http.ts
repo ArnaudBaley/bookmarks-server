@@ -81,7 +81,17 @@ export class HttpTabApi implements ITabApi {
         method: 'DELETE',
       })
       if (!response.ok) {
-        throw new Error(`Failed to delete tab: ${response.statusText}`)
+        // Try to extract error message from response body
+        let errorMessage = `Failed to delete tab: ${response.statusText}`
+        try {
+          const errorData = await response.json()
+          if (errorData?.message) {
+            errorMessage = errorData.message
+          }
+        } catch {
+          // If response is not JSON, use statusText
+        }
+        throw new Error(errorMessage)
       }
     } catch (error) {
       console.error('[HttpTabApi] Error deleting tab:', error)

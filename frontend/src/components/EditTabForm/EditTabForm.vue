@@ -4,6 +4,7 @@ import type { UpdateTabDto, Tab } from '@/types/tab'
 
 interface Props {
   tab: Tab
+  error?: string | null
 }
 
 interface Emits {
@@ -17,12 +18,17 @@ const emit = defineEmits<Emits>()
 
 const name = ref('')
 const color = ref('#3b82f6')
-const error = ref<string | null>(null)
+const localError = ref<string | null>(null)
 const nameInputRef = ref<HTMLInputElement | null>(null)
+const showDeleteConfirmation = ref(false)
 
 function handleEscapeKey(event: KeyboardEvent) {
   if (event.key === 'Escape') {
-    handleCancel()
+    if (showDeleteConfirmation.value) {
+      showDeleteConfirmation.value = false
+    } else {
+      handleCancel()
+    }
   }
 }
 
@@ -41,6 +47,7 @@ const colorPalette = [
 onMounted(async () => {
   name.value = props.tab.name
   color.value = props.tab.color || '#3b82f6'
+  localError.value = null
   window.addEventListener('keydown', handleEscapeKey)
   await nextTick()
   nameInputRef.value?.focus()
@@ -51,10 +58,10 @@ onUnmounted(() => {
 })
 
 function handleSubmit() {
-  error.value = null
+  localError.value = null
 
   if (!name.value.trim()) {
-    error.value = 'Name is required'
+    localError.value = 'Name is required'
     return
   }
 
@@ -65,13 +72,23 @@ function handleSubmit() {
 }
 
 function handleDelete() {
+  showDeleteConfirmation.value = true
+}
+
+function handleDeleteConfirm() {
+  showDeleteConfirmation.value = false
   emit('delete', props.tab.id)
+}
+
+function handleDeleteCancel() {
+  showDeleteConfirmation.value = false
 }
 
 function handleCancel() {
   name.value = props.tab.name
   color.value = props.tab.color || '#3b82f6'
-  error.value = null
+  localError.value = null
+  showDeleteConfirmation.value = false
   emit('cancel')
 }
 </script>
@@ -84,34 +101,76 @@ function handleCancel() {
     <div
       class="bg-[var(--color-background)] p-8 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.3)] w-[90%] max-w-[500px]"
     >
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="m-0 text-[var(--color-text)]">Edit Tab</h2>
-        <button
-          type="button"
-          class="p-2 text-[#dc3545] hover:bg-[#dc3545]/10 rounded transition-colors duration-200 cursor-pointer"
-          @click="handleDelete"
-          aria-label="Delete tab"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+      <!-- Delete Confirmation Dialog -->
+      <div v-if="showDeleteConfirmation" class="space-y-6">
+        <h2 class="m-0 text-[var(--color-text)]">Delete Tab</h2>
+        <div class="text-[var(--color-text)]">
+          <p class="mb-4">
+            Are you sure you want to delete the tab <strong>"{{ props.tab.name }}"</strong>?
+          </p>
+          <p class="mb-2 text-[#dc3545] font-semibold">
+            This will permanently delete:
+          </p>
+          <ul class="list-disc list-inside space-y-1 text-sm mb-4">
+            <li>The tab itself</li>
+            <li>All groups in this tab</li>
+            <li>All bookmarks in this tab</li>
+          </ul>
+          <p class="text-[#dc3545] font-semibold">
+            This action cannot be undone.
+          </p>
+        </div>
+        <div v-if="localError || props.error" class="text-[#dc3545] text-sm p-3 bg-[#dc3545]/10 rounded">
+          {{ localError || props.error }}
+        </div>
+        <div class="flex gap-4 justify-end">
+          <button
+            type="button"
+            class="px-6 py-3 border-none rounded text-base cursor-pointer transition-colors duration-200 bg-[var(--color-background-soft)] text-[var(--color-text)] hover:bg-[var(--color-border)]"
+            @click="handleDeleteCancel"
           >
-            <path d="M3 6h18" />
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-            <line x1="10" y1="11" x2="10" y2="17" />
-            <line x1="14" y1="11" x2="14" y2="17" />
-          </svg>
-        </button>
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="px-6 py-3 border-none rounded text-base cursor-pointer transition-colors duration-200 bg-[#dc3545] text-white hover:bg-[#c82333]"
+            @click="handleDeleteConfirm"
+          >
+            Delete Tab
+          </button>
+        </div>
       </div>
-      <form @submit.prevent="handleSubmit">
+
+      <!-- Edit Form -->
+      <div v-else>
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="m-0 text-[var(--color-text)]">Edit Tab</h2>
+          <button
+            type="button"
+            class="p-2 text-[#dc3545] hover:bg-[#dc3545]/10 rounded transition-colors duration-200 cursor-pointer"
+            @click="handleDelete"
+            aria-label="Delete tab"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 6h18" />
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+              <line x1="10" y1="11" x2="10" y2="17" />
+              <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
+          </button>
+        </div>
+        <form @submit.prevent="handleSubmit">
         <div class="mb-6">
           <label for="tab-name" class="block mb-2 text-[var(--color-text)] font-medium">
             Name
@@ -151,7 +210,9 @@ function handleCancel() {
             </div>
           </div>
         </div>
-        <div v-if="error" class="text-[#dc3545] mb-4 text-sm">{{ error }}</div>
+        <div v-if="localError || props.error" class="text-[#dc3545] mb-4 text-sm p-3 bg-[#dc3545]/10 rounded">
+          {{ localError || props.error }}
+        </div>
         <div class="flex gap-4 justify-end">
           <button
             type="button"
@@ -168,6 +229,7 @@ function handleCancel() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   </div>
 </template>

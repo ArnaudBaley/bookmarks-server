@@ -2,8 +2,13 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { useGroupStore } from '@/stores/group/group'
+import { useTabStore } from '@/stores/tab/tab'
+import { bookmarkApi } from '@/services/bookmarkApi/bookmarkApi'
+import { groupApi } from '@/services/groupApi/groupApi'
+import { tabApi } from '@/services/tabApi/tabApi'
 import type { CreateBookmarkDto } from '@/types/bookmark'
 import type { CreateGroupDto } from '@/types/group'
+import type { CreateTabDto } from '@/types/tab'
 
 interface Emits {
   (e: 'cancel'): void
@@ -13,25 +18,33 @@ const emit = defineEmits<Emits>()
 
 const bookmarkStore = useBookmarkStore()
 const groupStore = useGroupStore()
+const tabStore = useTabStore()
 
 const error = ref<string | null>(null)
 const isImporting = ref(false)
 const showConfirmation = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const importData = ref<{ 
-  bookmarks: Array<CreateBookmarkDto & { groupIndices?: number[] }>; 
-  groups: CreateGroupDto[] 
+  bookmarks: Array<CreateBookmarkDto & { groupIndices?: number[]; tabIndex?: number }>; 
+  groups: Array<CreateGroupDto & { tabIndex?: number }>
+  tabs: CreateTabDto[]
 } | null>(null)
 
 interface ExportData {
-  bookmarks: Array<{
+  tabs: Array<{
     name: string
-    url: string
-    groupIds?: string[]
+    color?: string | null
   }>
   groups: Array<{
     name: string
     color: string
+    tabIndex: number
+  }>
+  bookmarks: Array<{
+    name: string
+    url: string
+    tabIndex: number
+    groupIndices?: number[]
   }>
 }
 
@@ -63,26 +76,95 @@ async function handleExport() {
   try {
     error.value = null
     
-    // Create a map from group ID to index for reference
+    // Fetch all data from API to ensure we get complete data from all tabs
+    // (stores only contain filtered data for the active tab)
+    const allTabs = await tabApi.getAllTabs()
+    const allBookmarks = await bookmarkApi.getAllBookmarks()
+    const allGroups = await groupApi.getAllGroups()
+    
+    // Create maps from IDs to indices for reference
+    const tabIdToIndex = new Map<string, number>()
+    allTabs.forEach((tab, index) => {
+      tabIdToIndex.set(tab.id, index)
+    })
+    
     const groupIdToIndex = new Map<string, number>()
-    groupStore.groups.forEach((group, index) => {
+    allGroups.forEach((group, index) => {
       groupIdToIndex.set(group.id, index)
     })
     
     // Prepare export data (exclude IDs and timestamps)
-    // Use group indices instead of IDs to maintain relationships
+    // Use indices instead of IDs to maintain relationships
     const exportData: ExportData = {
-      bookmarks: bookmarkStore.bookmarks.map((bookmark) => ({
-        name: bookmark.name,
-        url: bookmark.url,
-        groupIds: (bookmark.groupIds || [])
-          .map((groupId) => groupIdToIndex.get(groupId))
-          .filter((index): index is number => index !== undefined),
+      tabs: allTabs.map((tab) => ({
+        name: tab.name,
+        color: tab.color,
       })),
-      groups: groupStore.groups.map((group) => ({
-        name: group.name,
-        color: group.color,
-      })),
+      groups: allGroups
+        .filter((group) => {
+          // Skip groups with null tabId if no tabs exist
+          if (!group.tabId && allTabs.length === 0) {
+            console.warn(`Skipping group ${group.name} with null tabId (no tabs available)`)
+            return false
+          }
+          return true
+        })
+        .map((group) => {
+          // Handle null tabId by assigning to first tab (index 0) if tabs exist
+          const tabId = group.tabId
+          let tabIndex: number
+          if (!tabId) {
+            if (allTabs.length === 0) {
+              throw new Error(`Group ${group.name} has null tabId and no tabs exist`)
+            }
+            tabIndex = 0 // Assign to first tab
+            console.warn(`Group ${group.name} has null tabId, assigning to first tab (index 0)`)
+          } else {
+            tabIndex = tabIdToIndex.get(tabId)
+            if (tabIndex === undefined) {
+              throw new Error(`Group ${group.name} references unknown tab ${tabId}`)
+            }
+          }
+          return {
+            name: group.name,
+            color: group.color,
+            tabIndex,
+          }
+        }),
+      bookmarks: allBookmarks
+        .filter((bookmark) => {
+          // Skip bookmarks with null tabId if no tabs exist
+          if (!bookmark.tabId && allTabs.length === 0) {
+            console.warn(`Skipping bookmark ${bookmark.name} with null tabId (no tabs available)`)
+            return false
+          }
+          return true
+        })
+        .map((bookmark) => {
+          // Handle null tabId by assigning to first tab (index 0) if tabs exist
+          const tabId = bookmark.tabId
+          let tabIndex: number
+          if (!tabId) {
+            if (allTabs.length === 0) {
+              throw new Error(`Bookmark ${bookmark.name} has null tabId and no tabs exist`)
+            }
+            tabIndex = 0 // Assign to first tab
+            console.warn(`Bookmark ${bookmark.name} has null tabId, assigning to first tab (index 0)`)
+          } else {
+            tabIndex = tabIdToIndex.get(tabId)
+            if (tabIndex === undefined) {
+              throw new Error(`Bookmark ${bookmark.name} references unknown tab ${tabId}`)
+            }
+          }
+          return {
+            name: bookmark.name,
+            url: bookmark.url,
+            tabIndex,
+            groupIndices: (bookmark.groupIds || [])
+              .map((groupId) => groupIdToIndex.get(groupId))
+              .filter((index): index is number => index !== undefined),
+          }
+        }),
     }
 
     // Create JSON string
@@ -113,8 +195,9 @@ async function handleExport() {
 }
 
 function validateImportData(data: unknown): { 
-  bookmarks: Array<CreateBookmarkDto & { groupIndices?: number[] }>; 
-  groups: CreateGroupDto[] 
+  bookmarks: Array<CreateBookmarkDto & { groupIndices?: number[]; tabIndex?: number }>; 
+  groups: Array<CreateGroupDto & { tabIndex?: number }>
+  tabs: CreateTabDto[]
 } | null {
   if (!data || typeof data !== 'object') {
     throw new Error('Invalid file format: data must be an object')
@@ -122,44 +205,31 @@ function validateImportData(data: unknown): {
 
   const obj = data as Record<string, unknown>
 
-  if (!Array.isArray(obj.bookmarks)) {
-    throw new Error('Invalid file format: bookmarks must be an array')
+  // Validate tabs (required for new format, optional for backward compatibility)
+  const tabs: CreateTabDto[] = []
+  if (Array.isArray(obj.tabs)) {
+    for (let i = 0; i < obj.tabs.length; i++) {
+      const tab = obj.tabs[i]
+      if (!tab || typeof tab !== 'object') {
+        throw new Error(`Invalid tab at index ${i}: must be an object`)
+      }
+      const t = tab as Record<string, unknown>
+      if (typeof t.name !== 'string' || !t.name.trim()) {
+        throw new Error(`Invalid tab at index ${i}: name is required and must be a string`)
+      }
+      tabs.push({
+        name: t.name.trim(),
+        color: typeof t.color === 'string' ? t.color.trim() : undefined,
+      })
+    }
   }
 
   if (!Array.isArray(obj.groups)) {
     throw new Error('Invalid file format: groups must be an array')
   }
 
-    // Validate bookmarks
-    // groupIds in export are indices (numbers) referring to groups array position
-    const bookmarks: Array<CreateBookmarkDto & { groupIndices?: number[] }> = []
-    for (let i = 0; i < obj.bookmarks.length; i++) {
-      const bookmark = obj.bookmarks[i]
-      if (!bookmark || typeof bookmark !== 'object') {
-        throw new Error(`Invalid bookmark at index ${i}: must be an object`)
-      }
-      const b = bookmark as Record<string, unknown>
-      if (typeof b.name !== 'string' || !b.name.trim()) {
-        throw new Error(`Invalid bookmark at index ${i}: name is required and must be a string`)
-      }
-      if (typeof b.url !== 'string' || !b.url.trim()) {
-        throw new Error(`Invalid bookmark at index ${i}: url is required and must be a string`)
-      }
-      // groupIds can be numbers (indices) or strings (for backward compatibility)
-      const groupIndices = Array.isArray(b.groupIds)
-        ? b.groupIds
-            .map((id) => (typeof id === 'number' ? id : typeof id === 'string' ? parseInt(id, 10) : null))
-            .filter((idx): idx is number => idx !== null && !isNaN(idx) && idx >= 0)
-        : []
-      bookmarks.push({
-        name: b.name.trim(),
-        url: b.url.trim(),
-        groupIndices,
-      })
-    }
-
   // Validate groups
-  const groups: CreateGroupDto[] = []
+  const groups: Array<CreateGroupDto & { tabIndex?: number }> = []
   for (let i = 0; i < obj.groups.length; i++) {
     const group = obj.groups[i]
     if (!group || typeof group !== 'object') {
@@ -172,13 +242,52 @@ function validateImportData(data: unknown): {
     if (typeof g.color !== 'string' || !g.color.trim()) {
       throw new Error(`Invalid group at index ${i}: color is required and must be a string`)
     }
+    // tabIndex can be a number (new format) or undefined (backward compatibility)
+    const tabIndex = typeof g.tabIndex === 'number' && g.tabIndex >= 0 ? g.tabIndex : undefined
     groups.push({
       name: g.name.trim(),
       color: g.color.trim(),
+      tabIndex,
     })
   }
 
-  return { bookmarks, groups }
+  if (!Array.isArray(obj.bookmarks)) {
+    throw new Error('Invalid file format: bookmarks must be an array')
+  }
+
+  // Validate bookmarks
+  // groupIds/groupIndices in export are indices (numbers) referring to groups array position
+  // tabIndex refers to tabs array position
+  const bookmarks: Array<CreateBookmarkDto & { groupIndices?: number[]; tabIndex?: number }> = []
+  for (let i = 0; i < obj.bookmarks.length; i++) {
+    const bookmark = obj.bookmarks[i]
+    if (!bookmark || typeof bookmark !== 'object') {
+      throw new Error(`Invalid bookmark at index ${i}: must be an object`)
+    }
+    const b = bookmark as Record<string, unknown>
+    if (typeof b.name !== 'string' || !b.name.trim()) {
+      throw new Error(`Invalid bookmark at index ${i}: name is required and must be a string`)
+    }
+    if (typeof b.url !== 'string' || !b.url.trim()) {
+      throw new Error(`Invalid bookmark at index ${i}: url is required and must be a string`)
+    }
+    // tabIndex can be a number (new format) or undefined (backward compatibility)
+    const tabIndex = typeof b.tabIndex === 'number' && b.tabIndex >= 0 ? b.tabIndex : undefined
+    // groupIds/groupIndices can be numbers (indices) or strings (for backward compatibility)
+    const groupIndices = Array.isArray(b.groupIds) || Array.isArray(b.groupIndices)
+      ? (b.groupIndices || b.groupIds || [])
+          .map((id) => (typeof id === 'number' ? id : typeof id === 'string' ? parseInt(id, 10) : null))
+          .filter((idx): idx is number => idx !== null && !isNaN(idx) && idx >= 0)
+      : []
+    bookmarks.push({
+      name: b.name.trim(),
+      url: b.url.trim(),
+      groupIndices,
+      tabIndex,
+    })
+  }
+
+  return { bookmarks, groups, tabs }
 }
 
 function handleFileSelect(event: Event) {
@@ -255,22 +364,87 @@ async function handleImportConfirm() {
       }
     }
 
-    // Create new groups first (bookmarks need group IDs)
+    // Delete all existing tabs
+    const tabIds = [...tabStore.tabs.map((t) => t.id)]
+    for (const id of tabIds) {
+      try {
+        await tabStore.removeTab(id)
+      } catch (err) {
+        console.error(`Failed to delete tab ${id}:`, err)
+      }
+    }
+
+    // Create new tabs first (groups and bookmarks need tab IDs)
+    // Store mapping from index to new tab ID
+    const tabIndexToId = new Map<number, string>()
+    for (let i = 0; i < importData.value.tabs.length; i++) {
+      const tabData = importData.value.tabs[i]
+      try {
+        const newTab = await tabStore.addTab(tabData)
+        tabIndexToId.set(i, newTab.id)
+      } catch (err) {
+        console.error(`Failed to create tab ${tabData.name}:`, err)
+      }
+    }
+
+    // If no tabs were imported, create a default tab for backward compatibility
+    if (importData.value.tabs.length === 0) {
+      try {
+        const defaultTab = await tabStore.addTab({ name: 'Default' })
+        tabIndexToId.set(0, defaultTab.id)
+      } catch (err) {
+        console.error('Failed to create default tab:', err)
+      }
+    }
+
+    // Create new groups (bookmarks need group IDs)
     // Store mapping from index to new group ID
     const groupIndexToId = new Map<number, string>()
     for (let i = 0; i < importData.value.groups.length; i++) {
       const groupData = importData.value.groups[i]
       try {
-        const newGroup = await groupStore.addGroup(groupData)
+        // Map tab index to new tab ID, or use default tab (index 0) if no tabIndex
+        let tabId: string | undefined
+        if (groupData.tabIndex !== undefined) {
+          tabId = tabIndexToId.get(groupData.tabIndex)
+        } else {
+          // Backward compatibility: use default tab (index 0)
+          tabId = tabIndexToId.get(0)
+        }
+        
+        if (!tabId) {
+          console.error(`Group ${groupData.name} has invalid tabIndex ${groupData.tabIndex}`)
+          continue
+        }
+
+        const newGroup = await groupStore.addGroup({
+          name: groupData.name,
+          color: groupData.color,
+          tabId,
+        })
         groupIndexToId.set(i, newGroup.id)
       } catch (err) {
         console.error(`Failed to create group ${groupData.name}:`, err)
       }
     }
 
-    // Create new bookmarks with updated group IDs
+    // Create new bookmarks with updated group IDs and tab IDs
     for (const bookmarkData of importData.value.bookmarks) {
       try {
+        // Map tab index to new tab ID, or use default tab (index 0) if no tabIndex
+        let tabId: string | undefined
+        if (bookmarkData.tabIndex !== undefined) {
+          tabId = tabIndexToId.get(bookmarkData.tabIndex)
+        } else {
+          // Backward compatibility: use default tab (index 0)
+          tabId = tabIndexToId.get(0)
+        }
+
+        if (!tabId) {
+          console.error(`Bookmark ${bookmarkData.name} has invalid tabIndex ${bookmarkData.tabIndex}`)
+          continue
+        }
+
         // Map group indices to new group IDs
         const mappedGroupIds: string[] = []
         
@@ -286,6 +460,7 @@ async function handleImportConfirm() {
         await bookmarkStore.addBookmark({
           name: bookmarkData.name,
           url: bookmarkData.url,
+          tabId,
           groupIds: mappedGroupIds,
         })
       } catch (err) {
@@ -294,6 +469,7 @@ async function handleImportConfirm() {
     }
 
     // Refresh data
+    await tabStore.fetchTabs()
     await bookmarkStore.fetchBookmarks()
     await groupStore.fetchGroups()
 
@@ -334,10 +510,11 @@ function triggerFileInput() {
         <h2 class="m-0 text-[var(--color-text)]">Confirm Import</h2>
         <div class="text-[var(--color-text)]">
           <p class="mb-4">
-            This will replace all existing bookmarks and groups with the imported data.
+            This will replace all existing tabs, bookmarks and groups with the imported data.
           </p>
           <p class="mb-2 font-semibold">Import Summary:</p>
           <ul class="list-disc list-inside space-y-1 text-sm">
+            <li>{{ importData?.tabs.length || 0 }} tab(s)</li>
             <li>{{ importData?.bookmarks.length || 0 }} bookmark(s)</li>
             <li>{{ importData?.groups.length || 0 }} group(s)</li>
           </ul>
@@ -402,7 +579,7 @@ function triggerFileInput() {
           <div class="p-6 border border-[var(--color-border)] rounded-lg">
             <h3 class="m-0 mb-3 text-lg text-[var(--color-text)]">Export Data</h3>
             <p class="m-0 mb-4 text-sm text-[var(--color-text)] opacity-70">
-              Download all your bookmarks and groups as a JSON file.
+              Download all your tabs, bookmarks and groups as a JSON file.
             </p>
             <button
               type="button"
@@ -417,7 +594,7 @@ function triggerFileInput() {
           <div class="p-6 border border-[var(--color-border)] rounded-lg">
             <h3 class="m-0 mb-3 text-lg text-[var(--color-text)]">Import Data</h3>
             <p class="m-0 mb-4 text-sm text-[var(--color-text)] opacity-70">
-              Import bookmarks and groups from a JSON file. This will replace all existing data.
+              Import tabs, bookmarks and groups from a JSON file. This will replace all existing data.
             </p>
             <input
               ref="fileInputRef"
