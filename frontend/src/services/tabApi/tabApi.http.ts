@@ -98,4 +98,18 @@ export class HttpTabApi implements ITabApi {
       throw error
     }
   }
+
+  async deleteAllTabs(): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/tabs/all`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to delete all tabs: ${response.statusText}`)
+      }
+    } catch (error) {
+      console.error('[HttpTabApi] Error deleting all tabs:', error)
+      throw error
+    }
+  }
 }

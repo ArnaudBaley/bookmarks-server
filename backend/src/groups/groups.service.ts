@@ -107,4 +107,19 @@ export class GroupsService {
       await this.groupRepository.save(group);
     }
   }
+
+  async removeAll(): Promise<void> {
+    // First, remove all bookmarks from groups (clean up ManyToMany relationships)
+    const groups = await this.groupRepository.find({
+      relations: ['bookmarks'],
+    });
+    for (const group of groups) {
+      if (group.bookmarks && group.bookmarks.length > 0) {
+        group.bookmarks = [];
+        await this.groupRepository.save(group);
+      }
+    }
+    // Then delete all groups
+    await this.groupRepository.clear();
+  }
 }

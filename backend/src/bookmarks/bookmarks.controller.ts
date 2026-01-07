@@ -63,6 +63,12 @@ export class BookmarksController {
     };
   }
 
+  @Delete('all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeAll() {
+    await this.bookmarksService.removeAll();
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {

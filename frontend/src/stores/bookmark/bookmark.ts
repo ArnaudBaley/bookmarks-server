@@ -88,6 +88,20 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     }
   }
 
+  async function deleteAllBookmarks() {
+    loading.value = true
+    error.value = null
+    try {
+      await bookmarkApi.deleteAllBookmarks()
+      bookmarks.value = []
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete all bookmarks'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     bookmarks,
     filteredBookmarks,
@@ -100,6 +114,7 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     addBookmark,
     updateBookmark,
     removeBookmark,
+    deleteAllBookmarks,
   }
 })
 

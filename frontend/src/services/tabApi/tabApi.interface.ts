@@ -39,4 +39,10 @@ export interface ITabApi {
    * @returns Promise that resolves when the tab is deleted
    */
   deleteTab(id: string): Promise<void>
+
+  /**
+   * Delete all tabs
+   * @returns Promise that resolves when all tabs are deleted
+   */
+  deleteAllTabs(): Promise<void>
 }

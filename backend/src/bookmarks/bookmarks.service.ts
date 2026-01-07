@@ -89,4 +89,8 @@ export class BookmarksService {
     const bookmark = await this.findOne(id);
     await this.bookmarkRepository.remove(bookmark);
   }
+
+  async removeAll(): Promise<void> {
+    await this.bookmarkRepository.clear();
+  }
 }

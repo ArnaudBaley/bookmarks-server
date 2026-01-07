@@ -76,5 +76,19 @@ export class HttpBookmarkApi implements IBookmarkApi {
       throw error
     }
   }
+
+  async deleteAllBookmarks(): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookmarks/all`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to delete all bookmarks: ${response.statusText}`)
+      }
+    } catch (error) {
+      console.error('[HttpBookmarkApi] Error deleting all bookmarks:', error)
+      throw error
+    }
+  }
 }
 

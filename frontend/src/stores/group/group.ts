@@ -146,6 +146,20 @@ export const useGroupStore = defineStore('group', () => {
     )
   }
 
+  async function deleteAllGroups() {
+    loading.value = true
+    error.value = null
+    try {
+      await groupApi.deleteAllGroups()
+      groups.value = []
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete all groups'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     groups,
     filteredGroups,
@@ -161,6 +175,7 @@ export const useGroupStore = defineStore('group', () => {
     removeBookmarkFromGroup,
     getBookmarksByGroup,
     getUngroupedBookmarks,
+    deleteAllGroups,
   }
 })
 

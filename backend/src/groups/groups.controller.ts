@@ -60,6 +60,12 @@ export class GroupsController {
     };
   }
 
+  @Delete('all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeAll() {
+    await this.groupsService.removeAll();
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {

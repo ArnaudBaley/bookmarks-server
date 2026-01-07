@@ -33,5 +33,11 @@ export interface IBookmarkApi {
    * @returns Promise that resolves when the bookmark is deleted
    */
   deleteBookmark(id: string): Promise<void>
+
+  /**
+   * Delete all bookmarks
+   * @returns Promise that resolves when all bookmarks are deleted
+   */
+  deleteAllBookmarks(): Promise<void>
 }
 

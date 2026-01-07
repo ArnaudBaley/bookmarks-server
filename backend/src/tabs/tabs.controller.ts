@@ -65,6 +65,12 @@ export class TabsController {
     };
   }
 
+  @Delete('all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeAll() {
+    await this.tabsService.removeAll();
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {

@@ -104,5 +104,19 @@ export class HttpGroupApi implements IGroupApi {
       throw error
     }
   }
+
+  async deleteAllGroups(): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/groups/all`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to delete all groups: ${response.statusText}`)
+      }
+    } catch (error) {
+      console.error('[HttpGroupApi] Error deleting all groups:', error)
+      throw error
+    }
+  }
 }
 

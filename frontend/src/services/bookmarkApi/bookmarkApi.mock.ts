@@ -96,6 +96,12 @@ export class MockBookmarkApi implements IBookmarkApi {
     this.setStorage(filtered)
   }
 
+  async deleteAllBookmarks(): Promise<void> {
+    console.log('[MockBookmarkApi] Deleting all bookmarks')
+    await this.simulateDelay()
+    this.setStorage([])
+  }
+
   /**
    * Clear all mock data (useful for testing)
    */

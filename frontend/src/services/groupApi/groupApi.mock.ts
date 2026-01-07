@@ -160,6 +160,12 @@ export class MockGroupApi implements IGroupApi {
     this.setBookmarksStorage(bookmarks)
   }
 
+  async deleteAllGroups(): Promise<void> {
+    console.log('[MockGroupApi] Deleting all groups')
+    await this.simulateDelay()
+    this.setGroupsStorage([])
+  }
+
   /**
    * Clear all mock data (useful for testing)
    */

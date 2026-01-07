@@ -315,8 +315,17 @@ test.describe('Bookmark Management', () => {
     const deleteButton = page.getByRole('button', { name: 'Delete bookmark' })
     await deleteButton.click()
 
-    // Wait for form to close
-    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeHidden()
+    // Wait for bookmark to be deleted from localStorage
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('bookmarks-mock-data')
+      if (!stored) return true // If no data, bookmark is deleted
+      try {
+        const bookmarks = JSON.parse(stored)
+        return !bookmarks.some((b: Bookmark) => b.id === '1')
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
 
     // Verify bookmark is removed from UI
     await expect(page.getByText('Bookmark to Delete')).toBeHidden()
@@ -1339,21 +1348,21 @@ test.describe('Export/Import Functionality', () => {
 
     // Read the downloaded file content
     const downloadPath = await download.path()
-    if (downloadPath) {
-      const content = fs.readFileSync(downloadPath, 'utf-8')
-      const exportData = JSON.parse(content)
+    expect(downloadPath).toBeTruthy()
+    
+    const content = fs.readFileSync(downloadPath!, 'utf-8')
+    const exportData = JSON.parse(content)
 
-      // Verify export structure
-      expect(exportData).toHaveProperty('tabs')
-      expect(exportData).toHaveProperty('groups')
-      expect(exportData).toHaveProperty('bookmarks')
-      expect(exportData.tabs.length).toBeGreaterThan(0)
-      expect(exportData.groups.length).toBeGreaterThan(0)
-      expect(exportData.bookmarks.length).toBeGreaterThan(0)
+    // Verify export structure
+    expect(exportData).toHaveProperty('tabs')
+    expect(exportData).toHaveProperty('groups')
+    expect(exportData).toHaveProperty('bookmarks')
+    expect(exportData.tabs.length).toBeGreaterThan(0)
+    expect(exportData.groups.length).toBeGreaterThan(0)
+    expect(exportData.bookmarks.length).toBeGreaterThan(0)
 
-      // Verify modal closed after export
-      await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeHidden()
-    }
+    // Verify modal closed after export
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeHidden()
   })
 
   test('should import data from JSON file', async ({ page }) => {
@@ -1386,11 +1395,8 @@ test.describe('Export/Import Functionality', () => {
     // Set the file and wait for it to be processed
     await fileInput.setInputFiles(tempFile)
     
-    // Wait for file processing (the modal shows a confirmation dialog after processing)
-    // The file input change event triggers async processing, so we need to wait
-    await page.waitForTimeout(500) // Give time for file reading and validation
-
-    // Wait for confirmation dialog
+    // Wait for confirmation dialog (the modal shows a confirmation dialog after processing)
+    // The file input change event triggers async processing, so we wait for the dialog to appear
     await expect(page.getByRole('heading', { name: 'Import Confirmation' })).toBeVisible({ timeout: 10000 })
     await expect(page.getByText(/This will replace all existing data/i)).toBeVisible()
 
@@ -1426,10 +1432,7 @@ test.describe('Export/Import Functionality', () => {
     const fileInput = page.locator('input[type="file"]')
     await fileInput.setInputFiles(tempFile)
     
-    // Wait for file processing
-    await page.waitForTimeout(500)
-
-    // Wait for error message
+    // Wait for error message (appears after file processing)
     await expect(page.getByText(/Failed to parse or validate file|Failed to read file/i)).toBeVisible({ timeout: 10000 })
 
     // Clean up temp file
@@ -1456,10 +1459,7 @@ test.describe('Export/Import Functionality', () => {
     const fileInput = page.locator('input[type="file"]')
     await fileInput.setInputFiles(tempFile)
     
-    // Wait for file processing
-    await page.waitForTimeout(500)
-
-    // Wait for confirmation dialog
+    // Wait for confirmation dialog (appears after file processing)
     await expect(page.getByRole('heading', { name: 'Import Confirmation' })).toBeVisible({ timeout: 10000 })
 
     // Click cancel

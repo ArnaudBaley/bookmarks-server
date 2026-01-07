@@ -97,4 +97,35 @@ export class TabsService {
     // Finally, delete the tab itself
     await this.tabRepository.remove(tab);
   }
+
+  async removeAll(): Promise<void> {
+    // Find all groups and bookmarks to clean up relationships
+    const groups = await this.groupRepository.find({
+      relations: ['bookmarks'],
+    });
+    const bookmarks = await this.bookmarkRepository.find({
+      relations: ['groups'],
+    });
+
+    // Remove bookmarks from groups (clean up ManyToMany relationships)
+    for (const group of groups) {
+      if (group.bookmarks && group.bookmarks.length > 0) {
+        group.bookmarks = [];
+        await this.groupRepository.save(group);
+      }
+    }
+
+    // Delete all groups
+    if (groups.length > 0) {
+      await this.groupRepository.clear();
+    }
+
+    // Delete all bookmarks
+    if (bookmarks.length > 0) {
+      await this.bookmarkRepository.clear();
+    }
+
+    // Finally, delete all tabs
+    await this.tabRepository.clear();
+  }
 }

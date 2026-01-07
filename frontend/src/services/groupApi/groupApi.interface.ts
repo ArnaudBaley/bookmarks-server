@@ -49,5 +49,11 @@ export interface IGroupApi {
    * @returns Promise that resolves when the bookmark is removed from the group
    */
   removeBookmarkFromGroup(groupId: string, bookmarkId: string): Promise<void>
+
+  /**
+   * Delete all groups
+   * @returns Promise that resolves when all groups are deleted
+   */
+  deleteAllGroups(): Promise<void>
 }
 

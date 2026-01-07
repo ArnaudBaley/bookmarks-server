@@ -104,6 +104,21 @@ export const useTabStore = defineStore('tab', () => {
     activeTabId.value = id
   }
 
+  async function deleteAllTabs() {
+    loading.value = true
+    error.value = null
+    try {
+      await tabApi.deleteAllTabs()
+      tabs.value = []
+      activeTabId.value = null
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete all tabs'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     tabs,
     activeTabId,
@@ -117,5 +132,6 @@ export const useTabStore = defineStore('tab', () => {
     updateTab,
     removeTab,
     setActiveTab,
+    deleteAllTabs,
   }
 })

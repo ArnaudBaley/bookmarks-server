@@ -131,6 +131,20 @@ export class MockTabApi implements ITabApi {
     }
   }
 
+  async deleteAllTabs(): Promise<void> {
+    console.log('[MockTabApi] Deleting all tabs')
+    await this.simulateDelay()
+    this.setStorage([])
+
+    // Cascade delete: Remove all groups and bookmarks
+    if (typeof window !== 'undefined') {
+      // Delete all groups
+      localStorage.removeItem('groups-mock-data')
+      // Delete all bookmarks
+      localStorage.removeItem('bookmarks-mock-data')
+    }
+  }
+
   /**
    * Clear all mock data (useful for testing)
    */

@@ -12,8 +12,8 @@ import EditGroupForm from '@/components/EditGroupForm/EditGroupForm.vue'
 import TabSwitcher from '@/components/TabSwitcher/TabSwitcher.vue'
 import AddTabForm from '@/components/AddTabForm/AddTabForm.vue'
 import EditTabForm from '@/components/EditTabForm/EditTabForm.vue'
+import SettingsModal from '@/components/SettingsModal/SettingsModal.vue'
 import ThemeToggle from '@/components/ThemeToggle/ThemeToggle.vue'
-import ExportImportModal from '@/components/ExportImportModal/ExportImportModal.vue'
 import type { CreateBookmarkDto, UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
 import type { CreateGroupDto, UpdateGroupDto, Group } from '@/types/group'
 import type { CreateTabDto, UpdateTabDto, Tab } from '@/types/tab'
@@ -25,7 +25,7 @@ const tabStore = useTabStore()
 const showAddForm = ref(false)
 const showAddGroupForm = ref(false)
 const showAddTabForm = ref(false)
-const showExportImportModal = ref(false)
+const showSettingsModal = ref(false)
 const editingBookmark = ref<Bookmark | null>(null)
 const editingGroup = ref<Group | null>(null)
 const editingTab = ref<Tab | null>(null)
@@ -438,9 +438,9 @@ async function handleUngroupedDrop(event: DragEvent) {
         </button>
         <button
           class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
-          @click="showExportImportModal = true"
-          aria-label="Export or import bookmarks"
-          title="Export or import bookmarks"
+          @click="showSettingsModal = true"
+          aria-label="Settings"
+          title="Settings"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -453,9 +453,8 @@ async function handleUngroupedDrop(event: DragEvent) {
             stroke-linecap="round"
             stroke-linejoin="round"
           >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
           </svg>
         </button>
       </div>
@@ -599,6 +598,6 @@ async function handleUngroupedDrop(event: DragEvent) {
       @delete="handleDeleteTab"
       @cancel="() => { editingTab = null; tabStore.error = null }"
     />
-    <ExportImportModal v-if="showExportImportModal" @cancel="showExportImportModal = false" />
+    <SettingsModal v-if="showSettingsModal" @cancel="showSettingsModal = false" />
   </main>
 </template>
