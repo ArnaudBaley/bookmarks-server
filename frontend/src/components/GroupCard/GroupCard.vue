@@ -15,6 +15,7 @@ interface Emits {
   (e: 'modify', group: Group): void
   (e: 'bookmark-drop', groupId: string, bookmarkId: string): void
   (e: 'bookmark-modify', bookmark: Bookmark): void
+  (e: 'bookmark-delete', id: string): void
 }
 
 const props = defineProps<Props>()
@@ -278,6 +279,7 @@ async function handleDrop(event: DragEvent) {
           :key="bookmark.id"
           :bookmark="bookmark"
           @modify="$emit('bookmark-modify', bookmark)"
+          @delete="$emit('bookmark-delete', $event)"
         />
       </div>
     </div>

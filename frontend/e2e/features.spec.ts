@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
 
 // Use only Chromium for feature tests for consistency
 test.use({ 
@@ -210,7 +213,11 @@ test.describe('Bookmark Management', () => {
     // Verify bookmark is visible
     await expect(page.getByText('Vue.js')).toBeVisible()
 
-    // Click modify button
+    // Click options button first to enter edit mode
+    const optionsButton = page.getByLabel('Options').first()
+    await optionsButton.click()
+
+    // Click modify button (now visible in edit mode)
     const modifyButton = page.getByLabel('Modify bookmark').first()
     await modifyButton.click()
 
@@ -261,7 +268,8 @@ test.describe('Bookmark Management', () => {
     await page.reload()
     await waitForBookmarksLoaded(page)
 
-    // Open edit form
+    // Open edit form - click options button first
+    await page.getByLabel('Options').first().click()
     await page.getByLabel('Modify bookmark').first().click()
     await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
 
@@ -301,11 +309,9 @@ test.describe('Bookmark Management', () => {
     // Verify bookmark exists
     await expect(page.getByText('Bookmark to Delete')).toBeVisible()
 
-    // Open edit form
-    await page.getByLabel('Modify bookmark').first().click()
-    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
-
-    // Click delete button
+    // Open edit mode - click options button first
+    await page.getByLabel('Options').first().click()
+    // Click delete button (delete button is visible in edit mode)
     const deleteButton = page.getByRole('button', { name: 'Delete bookmark' })
     await deleteButton.click()
 
@@ -1124,6 +1130,18 @@ test.describe('Group Management', () => {
     // Wait for form to close
     await expect(page.getByRole('heading', { name: 'Add New Group' })).toBeHidden()
 
+    // Wait for group to be saved to localStorage
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('groups-mock-data')
+      if (!stored) return false
+      try {
+        const groups = JSON.parse(stored)
+        return groups.some((g: { name: string }) => g.name === 'Work Group')
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
+
     // Verify the group appears in the UI (this will wait for it to appear)
     await expect(page.getByText('Work Group')).toBeVisible({ timeout: 10000 })
   })
@@ -1150,7 +1168,7 @@ test.describe('Group Management', () => {
     // Verify group is visible
     await expect(page.getByText('Original Group Name')).toBeVisible()
 
-    // Click modify button on the group
+    // Click modify button on the group (groups have a direct modify button)
     const modifyButton = page.getByLabel('Modify group').first()
     await modifyButton.click()
 
@@ -1213,6 +1231,708 @@ test.describe('Group Management', () => {
 
     // Verify group is removed from UI
     await expect(page.getByText('Group to Delete')).toBeHidden()
+  })
+})
+
+test.describe('Export/Import Functionality', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await clearMockData(page)
+    await setupDefaultTab(page)
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+  })
+
+  test('should open export/import modal', async ({ page }) => {
+    // Find and click the export/import button
+    const exportImportButton = page.getByRole('button', { name: /export or import/i })
+    await exportImportButton.click()
+
+    // Verify modal is visible
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeVisible()
+  })
+
+  test('should close export/import modal when clicking cancel', async ({ page }) => {
+    const exportImportButton = page.getByRole('button', { name: /export or import/i })
+    await exportImportButton.click()
+
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeVisible()
+
+    // Click close button
+    const closeButton = page.getByRole('button', { name: 'Close modal' })
+    await closeButton.click()
+
+    // Verify modal is closed
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeHidden()
+  })
+
+  test('should close export/import modal when pressing Escape', async ({ page }) => {
+    const exportImportButton = page.getByRole('button', { name: /export or import/i })
+    await exportImportButton.click()
+
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeVisible()
+
+    // Press Escape
+    await page.keyboard.press('Escape')
+
+    // Verify modal is closed
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeHidden()
+  })
+
+  test('should export data to JSON file', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    
+    // Set up test data
+    await setupMockTabs(page, [
+      defaultTab,
+      {
+        id: 'tab-2',
+        name: 'Work Tab',
+        color: '#10b981',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ])
+
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-1',
+        name: 'Work Group',
+        color: '#3b82f6',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    await setupMockBookmarks(page, [
+      {
+        id: '1',
+        name: 'Test Bookmark',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+        groupIds: ['group-1'],
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Open export/import modal
+    const exportImportButton = page.getByRole('button', { name: /export or import/i })
+    await exportImportButton.click()
+
+    // Set up download listener
+    const downloadPromise = page.waitForEvent('download')
+
+    // Click export button
+    const exportButton = page.getByRole('button', { name: 'Export to JSON' })
+    await exportButton.click()
+
+    // Wait for download
+    const download = await downloadPromise
+
+    // Verify download
+    expect(download.suggestedFilename()).toMatch(/^bookmarks-export-\d{4}-\d{2}-\d{2}\.json$/)
+
+    // Read the downloaded file content
+    const downloadPath = await download.path()
+    if (downloadPath) {
+      const content = fs.readFileSync(downloadPath, 'utf-8')
+      const exportData = JSON.parse(content)
+
+      // Verify export structure
+      expect(exportData).toHaveProperty('tabs')
+      expect(exportData).toHaveProperty('groups')
+      expect(exportData).toHaveProperty('bookmarks')
+      expect(exportData.tabs.length).toBeGreaterThan(0)
+      expect(exportData.groups.length).toBeGreaterThan(0)
+      expect(exportData.bookmarks.length).toBeGreaterThan(0)
+
+      // Verify modal closed after export
+      await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeHidden()
+    }
+  })
+
+  test('should import data from JSON file', async ({ page }) => {
+    await setupDefaultTab(page)
+
+    // Create export data structure
+    const importData = {
+      tabs: [
+        { name: 'Imported Tab', color: '#3b82f6' },
+      ],
+      groups: [
+        { name: 'Imported Group', color: '#10b981', tabIndex: 0 },
+      ],
+      bookmarks: [
+        { name: 'Imported Bookmark', url: 'https://example.com', tabIndex: 0, groupIndices: [0] },
+      ],
+    }
+
+    // Open export/import modal
+    const exportImportButton = page.getByRole('button', { name: /export or import/i })
+    await exportImportButton.click()
+
+    // Create a file input and set the file
+    const fileInput = page.locator('input[type="file"]')
+    
+    // Create a temporary file with the import data
+    const tempFile = path.join(os.tmpdir(), `test-import-${Date.now()}.json`)
+    fs.writeFileSync(tempFile, JSON.stringify(importData, null, 2))
+
+    // Set the file and wait for it to be processed
+    await fileInput.setInputFiles(tempFile)
+    
+    // Wait for file processing (the modal shows a confirmation dialog after processing)
+    // The file input change event triggers async processing, so we need to wait
+    await page.waitForTimeout(500) // Give time for file reading and validation
+
+    // Wait for confirmation dialog
+    await expect(page.getByRole('heading', { name: 'Import Confirmation' })).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/This will replace all existing data/i)).toBeVisible()
+
+    // Confirm import
+    const confirmButton = page.getByRole('button', { name: 'Confirm Import' })
+    await confirmButton.click()
+
+    // Wait for import to complete and modal to close
+    await expect(page.getByRole('heading', { name: 'Import Confirmation' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeHidden()
+
+    // Wait for data to be loaded
+    await waitForBookmarksLoaded(page)
+
+    // Verify imported data appears in UI
+    await expect(page.getByText('Imported Tab')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('Imported Group')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('Imported Bookmark')).toBeVisible({ timeout: 5000 })
+
+    // Clean up temp file
+    fs.unlinkSync(tempFile)
+  })
+
+  test('should show error for invalid import file', async ({ page }) => {
+    // Open export/import modal
+    const exportImportButton = page.getByRole('button', { name: /export or import/i })
+    await exportImportButton.click()
+
+    // Create invalid JSON file
+    const tempFile = path.join(os.tmpdir(), `test-invalid-${Date.now()}.json`)
+    fs.writeFileSync(tempFile, 'invalid json content {')
+
+    const fileInput = page.locator('input[type="file"]')
+    await fileInput.setInputFiles(tempFile)
+    
+    // Wait for file processing
+    await page.waitForTimeout(500)
+
+    // Wait for error message
+    await expect(page.getByText(/Failed to parse or validate file|Failed to read file/i)).toBeVisible({ timeout: 10000 })
+
+    // Clean up temp file
+    fs.unlinkSync(tempFile)
+  })
+
+  test('should cancel import confirmation', async ({ page }) => {
+    await setupDefaultTab(page)
+
+    const importData = {
+      tabs: [{ name: 'Imported Tab', color: '#3b82f6' }],
+      groups: [],
+      bookmarks: [],
+    }
+
+    // Open export/import modal
+    const exportImportButton = page.getByRole('button', { name: /export or import/i })
+    await exportImportButton.click()
+
+    // Create and set file
+    const tempFile = path.join(os.tmpdir(), `test-cancel-${Date.now()}.json`)
+    fs.writeFileSync(tempFile, JSON.stringify(importData, null, 2))
+
+    const fileInput = page.locator('input[type="file"]')
+    await fileInput.setInputFiles(tempFile)
+    
+    // Wait for file processing
+    await page.waitForTimeout(500)
+
+    // Wait for confirmation dialog
+    await expect(page.getByRole('heading', { name: 'Import Confirmation' })).toBeVisible({ timeout: 10000 })
+
+    // Click cancel
+    const cancelButton = page.getByRole('button', { name: 'Cancel' }).first()
+    await cancelButton.click()
+
+    // Verify confirmation dialog closed and modal is still open
+    await expect(page.getByRole('heading', { name: 'Import Confirmation' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeVisible()
+
+    // Clean up temp file
+    fs.unlinkSync(tempFile)
+  })
+})
+
+test.describe('Drag and Drop Functionality', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await clearMockData(page)
+    await setupDefaultTab(page)
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+  })
+
+  test('should create bookmark by dragging URL from browser', async ({ page }) => {
+    // Navigate to a page with a link
+    await page.goto('http://localhost:5174')
+    await waitForBookmarksLoaded(page)
+
+    // Create a link element that we can drag
+    await page.evaluate(() => {
+      const link = document.createElement('a')
+      link.href = 'https://playwright.dev'
+      link.textContent = 'Playwright'
+      link.id = 'draggable-link'
+      link.style.position = 'fixed'
+      link.style.top = '10px'
+      link.style.left = '10px'
+      link.style.zIndex = '10000'
+      document.body.appendChild(link)
+    })
+
+    const link = page.locator('#draggable-link')
+    const bookmarkArea = page.locator('body')
+
+    // Perform drag and drop
+    await link.dragTo(bookmarkArea)
+
+    // Wait for bookmark to be created
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('bookmarks-mock-data')
+      if (!stored) return false
+      try {
+        const bookmarks = JSON.parse(stored)
+        return bookmarks.some((b: Bookmark) => b.url.includes('playwright.dev'))
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
+
+    // Verify bookmark appears in UI
+    await expect(page.getByText(/playwright/i)).toBeVisible({ timeout: 5000 })
+  })
+
+  test('should move bookmark to group by dragging', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+
+    // Set up a group
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-1',
+        name: 'Target Group',
+        color: '#3b82f6',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    // Set up a bookmark without a group
+    await setupMockBookmarks(page, [
+      {
+        id: 'bookmark-1',
+        name: 'Bookmark to Move',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Wait for bookmark and group to be visible
+    await expect(page.getByText('Bookmark to Move')).toBeVisible()
+    await expect(page.getByText('Target Group')).toBeVisible()
+
+    // Find the bookmark card and group card
+    const bookmarkCard = page.getByText('Bookmark to Move').locator('..').locator('..')
+    const groupCard = page.getByText('Target Group').locator('..').locator('..')
+
+    // Perform drag and drop
+    await bookmarkCard.dragTo(groupCard)
+
+    // Wait for bookmark to be assigned to group
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('bookmarks-mock-data')
+      if (!stored) return false
+      try {
+        const bookmarks = JSON.parse(stored)
+        const bookmark = bookmarks.find((b: Bookmark) => b.id === 'bookmark-1')
+        return bookmark && bookmark.groupIds && bookmark.groupIds.includes('group-1')
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
+
+    // Reload to see the change
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Verify bookmark is now in the group (it should be visible within the group)
+    const groupHeading = page.getByRole('heading', { name: 'Target Group' })
+    await expect(groupHeading).toBeVisible()
+    // The bookmark should be in the group section
+    const groupSection = groupHeading.locator('..')
+    await expect(groupSection.getByText('Bookmark to Move')).toBeVisible({ timeout: 5000 })
+  })
+
+  test('should remove bookmark from group by dragging to ungrouped section', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+
+    // Set up a group with a bookmark
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-1',
+        name: 'Source Group',
+        color: '#3b82f6',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    await setupMockBookmarks(page, [
+      {
+        id: 'bookmark-1',
+        name: 'Bookmark in Group',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+        groupIds: ['group-1'],
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Wait for bookmark and group to be visible
+    await expect(page.getByText('Bookmark in Group')).toBeVisible()
+    await expect(page.getByText('Source Group')).toBeVisible()
+
+    // Find the bookmark card and ungrouped section
+    const bookmarkCard = page.getByText('Bookmark in Group').locator('..').locator('..')
+    const ungroupedHeading = page.getByRole('heading', { name: 'Ungrouped' }).first()
+    const ungroupedSection = ungroupedHeading.locator('..')
+
+    // Perform drag and drop
+    await bookmarkCard.dragTo(ungroupedSection)
+
+    // Wait for bookmark to be removed from group
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('bookmarks-mock-data')
+      if (!stored) return false
+      try {
+        const bookmarks = JSON.parse(stored)
+        const bookmark = bookmarks.find((b: Bookmark) => b.id === 'bookmark-1')
+        return bookmark && (!bookmark.groupIds || bookmark.groupIds.length === 0)
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
+
+    // Reload to see the change
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Verify bookmark is now in ungrouped section
+    await expect(page.getByText('Bookmark in Group')).toBeVisible()
+    // It should be in the ungrouped section (not in the group)
+    const groupSection = page.getByRole('heading', { name: 'Source Group' }).locator('..')
+    await expect(groupSection.getByText('Bookmark in Group')).toBeHidden()
+  })
+
+  test('should create bookmark in group by dragging URL to group', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+
+    // Set up a group
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-1',
+        name: 'Target Group',
+        color: '#3b82f6',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Create a draggable link
+    await page.evaluate(() => {
+      const link = document.createElement('a')
+      link.href = 'https://vuejs.org'
+      link.textContent = 'Vue.js'
+      link.id = 'vue-link'
+      link.style.position = 'fixed'
+      link.style.top = '10px'
+      link.style.left = '10px'
+      link.style.zIndex = '10000'
+      document.body.appendChild(link)
+    })
+
+    const link = page.locator('#vue-link')
+    const groupCard = page.getByText('Target Group').locator('..').locator('..')
+
+    // Perform drag and drop
+    await link.dragTo(groupCard)
+
+    // Wait for bookmark to be created in the group
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('bookmarks-mock-data')
+      if (!stored) return false
+      try {
+        const bookmarks = JSON.parse(stored)
+        const bookmark = bookmarks.find((b: Bookmark) => b.url.includes('vuejs.org'))
+        return bookmark && bookmark.groupIds && bookmark.groupIds.includes('group-1')
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
+
+    // Verify bookmark appears in the group
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+    const groupHeading = page.getByRole('heading', { name: 'Target Group' })
+    const groupSection = groupHeading.locator('..')
+    await expect(groupSection.getByText(/vue/i)).toBeVisible({ timeout: 5000 })
+  })
+})
+
+test.describe('Bookmark-to-Group Assignment', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await clearMockData(page)
+    await setupDefaultTab(page)
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+  })
+
+  test('should assign bookmark to group via edit form', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+
+    // Set up a group
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-1',
+        name: 'Work Group',
+        color: '#3b82f6',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    // Set up a bookmark without a group
+    await setupMockBookmarks(page, [
+      {
+        id: 'bookmark-1',
+        name: 'Test Bookmark',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Open edit form - click options button first
+    await page.getByLabel('Options').first().click()
+    await page.getByLabel('Modify bookmark').first().click()
+    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
+
+    // Find and check the group checkbox
+    const groupCheckbox = page.getByLabel('Work Group', { exact: false })
+    await groupCheckbox.check()
+
+    // Submit the form
+    await page.getByRole('button', { name: 'Update Bookmark' }).click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeHidden()
+
+    // Wait for bookmark to be assigned to group
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('bookmarks-mock-data')
+      if (!stored) return false
+      try {
+        const bookmarks = JSON.parse(stored)
+        const bookmark = bookmarks.find((b: Bookmark) => b.id === 'bookmark-1')
+        return bookmark && bookmark.groupIds && bookmark.groupIds.includes('group-1')
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
+
+    // Reload and verify bookmark appears in group
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+    const groupHeading = page.getByRole('heading', { name: 'Work Group' })
+    const groupSection = groupHeading.locator('..')
+    await expect(groupSection.getByText('Test Bookmark')).toBeVisible({ timeout: 5000 })
+  })
+
+  test('should assign bookmark to multiple groups', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+
+    // Set up multiple groups
+    await page.evaluate((tabId) => {
+      const groups = [
+        {
+          id: 'group-1',
+          name: 'Work Group',
+          color: '#3b82f6',
+          tabId: tabId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'group-2',
+          name: 'Personal Group',
+          color: '#10b981',
+          tabId: tabId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    await setupMockBookmarks(page, [
+      {
+        id: 'bookmark-1',
+        name: 'Multi Group Bookmark',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Open edit form - click options button first
+    await page.getByLabel('Options').first().click()
+    await page.getByLabel('Modify bookmark').first().click()
+    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
+
+    // Check both group checkboxes
+    await page.getByLabel('Work Group', { exact: false }).check()
+    await page.getByLabel('Personal Group', { exact: false }).check()
+
+    // Submit the form
+    await page.getByRole('button', { name: 'Update Bookmark' }).click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeHidden()
+
+    // Wait for bookmark to be assigned to both groups
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('bookmarks-mock-data')
+      if (!stored) return false
+      try {
+        const bookmarks = JSON.parse(stored)
+        const bookmark = bookmarks.find((b: Bookmark) => b.id === 'bookmark-1')
+        return bookmark && bookmark.groupIds && 
+               bookmark.groupIds.includes('group-1') && 
+               bookmark.groupIds.includes('group-2')
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
+
+    // Reload and verify bookmark appears in both groups
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+    const workGroupHeading = page.getByRole('heading', { name: 'Work Group' })
+    const personalGroupHeading = page.getByRole('heading', { name: 'Personal Group' })
+    await expect(workGroupHeading.locator('..').getByText('Multi Group Bookmark')).toBeVisible({ timeout: 5000 })
+    await expect(personalGroupHeading.locator('..').getByText('Multi Group Bookmark')).toBeVisible({ timeout: 5000 })
+  })
+
+  test('should remove bookmark from group via edit form', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+
+    // Set up a group with a bookmark
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-1',
+        name: 'Work Group',
+        color: '#3b82f6',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    await setupMockBookmarks(page, [
+      {
+        id: 'bookmark-1',
+        name: 'Grouped Bookmark',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+        groupIds: ['group-1'],
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Open edit form - click options button first
+    await page.getByLabel('Options').first().click()
+    await page.getByLabel('Modify bookmark').first().click()
+    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
+
+    // Uncheck the group checkbox
+    const groupCheckbox = page.getByLabel('Work Group', { exact: false })
+    await groupCheckbox.uncheck()
+
+    // Submit the form
+    await page.getByRole('button', { name: 'Update Bookmark' }).click()
+
+    // Wait for form to close
+    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeHidden()
+
+    // Wait for bookmark to be removed from group
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('bookmarks-mock-data')
+      if (!stored) return false
+      try {
+        const bookmarks = JSON.parse(stored)
+        const bookmark = bookmarks.find((b: Bookmark) => b.id === 'bookmark-1')
+        return bookmark && (!bookmark.groupIds || bookmark.groupIds.length === 0)
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
+
+    // Reload and verify bookmark is in ungrouped section
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+    await expect(page.getByText('Grouped Bookmark')).toBeVisible()
+    const groupSection = page.getByRole('heading', { name: 'Work Group' }).locator('..')
+    await expect(groupSection.getByText('Grouped Bookmark')).toBeHidden()
   })
 })
 

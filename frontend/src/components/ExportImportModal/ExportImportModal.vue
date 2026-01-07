@@ -25,8 +25,8 @@ const isImporting = ref(false)
 const showConfirmation = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const importData = ref<{ 
-  bookmarks: Array<CreateBookmarkDto & { groupIndices?: number[]; tabIndex?: number }>; 
-  groups: Array<CreateGroupDto & { tabIndex?: number }>
+  bookmarks: Array<Omit<CreateBookmarkDto, 'tabId'> & { groupIndices?: number[]; tabIndex?: number }>; 
+  groups: Array<Omit<CreateGroupDto, 'tabId'> & { tabIndex?: number }>
   tabs: CreateTabDto[]
 } | null>(null)
 
@@ -120,10 +120,11 @@ async function handleExport() {
             tabIndex = 0 // Assign to first tab
             console.warn(`Group ${group.name} has null tabId, assigning to first tab (index 0)`)
           } else {
-            tabIndex = tabIdToIndex.get(tabId)
-            if (tabIndex === undefined) {
+            const foundTabIndex = tabIdToIndex.get(tabId)
+            if (foundTabIndex === undefined) {
               throw new Error(`Group ${group.name} references unknown tab ${tabId}`)
             }
+            tabIndex = foundTabIndex
           }
           return {
             name: group.name,
@@ -151,10 +152,11 @@ async function handleExport() {
             tabIndex = 0 // Assign to first tab
             console.warn(`Bookmark ${bookmark.name} has null tabId, assigning to first tab (index 0)`)
           } else {
-            tabIndex = tabIdToIndex.get(tabId)
-            if (tabIndex === undefined) {
+            const foundTabIndex = tabIdToIndex.get(tabId)
+            if (foundTabIndex === undefined) {
               throw new Error(`Bookmark ${bookmark.name} references unknown tab ${tabId}`)
             }
+            tabIndex = foundTabIndex
           }
           return {
             name: bookmark.name,
@@ -195,8 +197,8 @@ async function handleExport() {
 }
 
 function validateImportData(data: unknown): { 
-  bookmarks: Array<CreateBookmarkDto & { groupIndices?: number[]; tabIndex?: number }>; 
-  groups: Array<CreateGroupDto & { tabIndex?: number }>
+  bookmarks: Array<Omit<CreateBookmarkDto, 'tabId'> & { groupIndices?: number[]; tabIndex?: number }>; 
+  groups: Array<Omit<CreateGroupDto, 'tabId'> & { tabIndex?: number }>
   tabs: CreateTabDto[]
 } | null {
   if (!data || typeof data !== 'object') {
@@ -229,7 +231,7 @@ function validateImportData(data: unknown): {
   }
 
   // Validate groups
-  const groups: Array<CreateGroupDto & { tabIndex?: number }> = []
+  const groups: Array<Omit<CreateGroupDto, 'tabId'> & { tabIndex?: number }> = []
   for (let i = 0; i < obj.groups.length; i++) {
     const group = obj.groups[i]
     if (!group || typeof group !== 'object') {
@@ -258,7 +260,7 @@ function validateImportData(data: unknown): {
   // Validate bookmarks
   // groupIds/groupIndices in export are indices (numbers) referring to groups array position
   // tabIndex refers to tabs array position
-  const bookmarks: Array<CreateBookmarkDto & { groupIndices?: number[]; tabIndex?: number }> = []
+  const bookmarks: Array<Omit<CreateBookmarkDto, 'tabId'> & { groupIndices?: number[]; tabIndex?: number }> = []
   for (let i = 0; i < obj.bookmarks.length; i++) {
     const bookmark = obj.bookmarks[i]
     if (!bookmark || typeof bookmark !== 'object') {
@@ -274,11 +276,10 @@ function validateImportData(data: unknown): {
     // tabIndex can be a number (new format) or undefined (backward compatibility)
     const tabIndex = typeof b.tabIndex === 'number' && b.tabIndex >= 0 ? b.tabIndex : undefined
     // groupIds/groupIndices can be numbers (indices) or strings (for backward compatibility)
-    const groupIndices = Array.isArray(b.groupIds) || Array.isArray(b.groupIndices)
-      ? (b.groupIndices || b.groupIds || [])
-          .map((id) => (typeof id === 'number' ? id : typeof id === 'string' ? parseInt(id, 10) : null))
-          .filter((idx): idx is number => idx !== null && !isNaN(idx) && idx >= 0)
-      : []
+    const groupIndicesArray = Array.isArray(b.groupIds) ? b.groupIds : Array.isArray(b.groupIndices) ? b.groupIndices : []
+    const groupIndices = groupIndicesArray
+      .map((id: unknown): number | null => (typeof id === 'number' ? id : typeof id === 'string' ? parseInt(id, 10) : null))
+      .filter((idx): idx is number => idx !== null && !isNaN(idx) && idx >= 0)
     bookmarks.push({
       name: b.name.trim(),
       url: b.url.trim(),
@@ -382,6 +383,9 @@ async function handleImportConfirm() {
     const tabIndexToId = new Map<number, string>()
     for (let i = 0; i < importData.value.tabs.length; i++) {
       const tabData = importData.value.tabs[i]
+      if (!tabData) {
+        continue
+      }
       try {
         const newTab = await tabStore.addTab(tabData)
         tabIndexToId.set(i, newTab.id)
@@ -412,6 +416,9 @@ async function handleImportConfirm() {
     const groupIndexToId = new Map<number, string>()
     for (let i = 0; i < importData.value.groups.length; i++) {
       const groupData = importData.value.groups[i]
+      if (!groupData) {
+        continue
+      }
       try {
         // Map tab index to new tab ID, or use default tab (index 0) if no tabIndex
         let tabId: string | undefined

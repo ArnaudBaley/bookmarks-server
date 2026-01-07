@@ -62,17 +62,65 @@ describe('BookmarkCard', () => {
     expect(mockOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
   })
 
-  it('emits modify event when modify button is clicked', async () => {
+  it('toggles edit mode when option button is clicked', async () => {
     const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
     const wrapper = mount(BookmarkCard, {
       props: { bookmark },
     })
 
+    // Initially, option button should be visible
+    const optionButton = wrapper.find('button[aria-label="Options"]')
+    expect(optionButton.exists()).toBe(true)
+    expect(wrapper.find('button[aria-label="Modify bookmark"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Delete bookmark"]').exists()).toBe(false)
+
+    // Click option button to enter edit mode
+    await optionButton.trigger('click')
+
+    // Now modify and delete buttons should be visible, option button should not
+    expect(wrapper.find('button[aria-label="Options"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Modify bookmark"]').exists()).toBe(true)
+    expect(wrapper.find('button[aria-label="Delete bookmark"]').exists()).toBe(true)
+  })
+
+  it('emits modify event when modify button is clicked in edit mode', async () => {
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    // Enter edit mode
+    const optionButton = wrapper.find('button[aria-label="Options"]')
+    await optionButton.trigger('click')
+
+    // Click modify button
     const modifyButton = wrapper.find('button[aria-label="Modify bookmark"]')
     await modifyButton.trigger('click')
 
     expect(wrapper.emitted('modify')).toBeTruthy()
     expect(wrapper.emitted('modify')?.[0]).toEqual([bookmark])
+    // Edit mode should be closed after modify
+    expect(wrapper.find('button[aria-label="Options"]').exists()).toBe(true)
+  })
+
+  it('emits delete event when delete button is clicked', async () => {
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    // Enter edit mode
+    const optionButton = wrapper.find('button[aria-label="Options"]')
+    await optionButton.trigger('click')
+
+    // Click delete button
+    const deleteButton = wrapper.find('button[aria-label="Delete bookmark"]')
+    await deleteButton.trigger('click')
+
+    expect(wrapper.emitted('delete')).toBeTruthy()
+    expect(wrapper.emitted('delete')?.[0]).toEqual(['test-id'])
+    // Edit mode should be closed after delete
+    expect(wrapper.find('button[aria-label="Options"]').exists()).toBe(true)
   })
 
   it('handles invalid URLs in getFaviconUrl by returning default favicon', () => {
@@ -97,16 +145,16 @@ describe('BookmarkCard', () => {
     expect(img.exists()).toBe(true)
   })
 
-  it('renders modify button with correct aria-label', () => {
+  it('renders option button with correct aria-label', () => {
     const bookmark = createBookmark()
     const wrapper = mount(BookmarkCard, {
       props: { bookmark },
     })
 
-    const modifyButton = wrapper.find('button[aria-label="Modify bookmark"]')
-    expect(modifyButton.exists()).toBe(true)
+    const optionButton = wrapper.find('button[aria-label="Options"]')
+    expect(optionButton.exists()).toBe(true)
     // Check that it contains an SVG (the three dots icon)
-    const svg = modifyButton.find('svg')
+    const svg = optionButton.find('svg')
     expect(svg.exists()).toBe(true)
   })
 
@@ -121,19 +169,74 @@ describe('BookmarkCard', () => {
     expect(card.classes()).toContain('flex-row')
   })
 
-  it('does not open URL when modify button is clicked', async () => {
+  it('does not open URL when option button is clicked', async () => {
     const bookmark = createBookmark({ url: 'https://example.com' })
     const wrapper = mount(BookmarkCard, {
       props: { bookmark },
     })
 
-    const modifyButton = wrapper.find('button[aria-label="Modify bookmark"]')
-    await modifyButton.trigger('click')
+    const optionButton = wrapper.find('button[aria-label="Options"]')
+    await optionButton.trigger('click')
 
     // Should not have opened the URL
     expect(mockOpen).not.toHaveBeenCalled()
-    // But should have emitted modify event
-    expect(wrapper.emitted('modify')).toBeTruthy()
+    // Should have entered edit mode
+    expect(wrapper.find('button[aria-label="Modify bookmark"]').exists()).toBe(true)
   })
+
+  it('does not open URL when in edit mode and card is clicked', async () => {
+    const bookmark = createBookmark({ url: 'https://example.com' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    // Enter edit mode
+    const optionButton = wrapper.find('button[aria-label="Options"]')
+    await optionButton.trigger('click')
+
+    // Click on the card
+    const card = wrapper.find('[role="button"]')
+    await card.trigger('click')
+
+    // Should not have opened the URL when in edit mode
+    expect(mockOpen).not.toHaveBeenCalled()
+  })
+
+  it('closes edit mode when clicking outside the card', async () => {
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+      attachTo: document.body,
+    })
+
+    // Enter edit mode
+    const optionButton = wrapper.find('button[aria-label="Options"]')
+    await optionButton.trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('button[aria-label="Modify bookmark"]').exists()).toBe(true)
+
+    // Create an element outside the card to click on
+    const outsideElement = document.createElement('div')
+    document.body.appendChild(outsideElement)
+
+    // Simulate click outside by directly calling the handler with the outside element as target
+    const clickEvent = new MouseEvent('click', { bubbles: true })
+    Object.defineProperty(clickEvent, 'target', {
+      writable: false,
+      value: outsideElement,
+    })
+    document.dispatchEvent(clickEvent)
+
+    await wrapper.vm.$nextTick()
+
+    // Edit mode should be closed
+    expect(wrapper.find('button[aria-label="Options"]').exists()).toBe(true)
+    expect(wrapper.find('button[aria-label="Modify bookmark"]').exists()).toBe(false)
+
+    // Cleanup
+    document.body.removeChild(outsideElement)
+    wrapper.unmount()
+  })
+
 })
 

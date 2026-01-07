@@ -4,6 +4,7 @@ import type { Component } from 'vue'
 import { vi } from 'vitest'
 import type { Bookmark, CreateBookmarkDto } from '@/types/bookmark'
 import type { Group, CreateGroupDto } from '@/types/group'
+import type { Tab, CreateTabDto } from '@/types/tab'
 
 /**
  * Creates a fresh Pinia instance for testing
@@ -182,6 +183,44 @@ export function createGroupArray(count: number): Group[] {
     createGroup({
       id: `test-group-id-${i + 1}`,
       name: `Test Group ${i + 1}`,
+      color: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'][i % 4],
+    })
+  )
+}
+
+/**
+ * Test data factory for creating tab objects
+ */
+export function createTab(overrides?: Partial<Tab>): Tab {
+  return {
+    id: 'test-tab-id-1',
+    name: 'Test Tab',
+    color: '#3b82f6',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+  }
+}
+
+/**
+ * Test data factory for creating CreateTabDto objects
+ */
+export function createTabDto(overrides?: Partial<CreateTabDto>): CreateTabDto {
+  return {
+    name: 'Test Tab',
+    color: '#3b82f6',
+    ...overrides,
+  }
+}
+
+/**
+ * Creates an array of test tabs
+ */
+export function createTabArray(count: number): Tab[] {
+  return Array.from({ length: count }, (_, i) =>
+    createTab({
+      id: `test-tab-id-${i + 1}`,
+      name: `Test Tab ${i + 1}`,
       color: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'][i % 4],
     })
   )

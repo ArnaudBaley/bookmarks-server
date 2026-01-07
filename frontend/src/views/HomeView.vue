@@ -93,6 +93,14 @@ async function handleDeleteFromEditForm(id: string) {
   }
 }
 
+async function handleDeleteBookmark(id: string) {
+  try {
+    await bookmarkStore.removeBookmark(id)
+  } catch (error) {
+    console.error('Failed to delete bookmark:', error)
+  }
+}
+
 async function handleAddGroup(data: CreateGroupDto) {
   try {
     if (!tabStore.activeTabId) {
@@ -541,6 +549,7 @@ async function handleUngroupedDrop(event: DragEvent) {
               :key="bookmark.id"
               :bookmark="bookmark"
               @modify="handleModifyBookmark"
+              @delete="handleDeleteBookmark"
             />
           </div>
           <div v-else class="text-center py-8 text-[var(--color-text)] opacity-60">
@@ -560,6 +569,7 @@ async function handleUngroupedDrop(event: DragEvent) {
           @modify="handleModifyGroup"
           @bookmark-drop="handleBookmarkDrop"
           @bookmark-modify="handleModifyBookmark"
+          @bookmark-delete="handleDeleteBookmark"
         />
       </div>
     </div>
