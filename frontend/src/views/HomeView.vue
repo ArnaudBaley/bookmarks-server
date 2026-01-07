@@ -476,7 +476,14 @@ async function handleUngroupedDrop(event: DragEvent) {
       </button>
     </div>
 
-    <div v-else-if="bookmarkStore.bookmarks.length === 0 && groupStore.groups.length === 0" class="text-center py-12 text-[var(--color-text)]">
+    <div 
+      v-else-if="bookmarkStore.bookmarks.length === 0 && groupStore.groups.length === 0" 
+      class="text-center py-12 text-[var(--color-text)] transition-all duration-200"
+      :class="{ 'ring-2 ring-offset-2 ring-blue-500': isDragOverUngrouped }"
+      @dragover="handleUngroupedDragOver"
+      @dragleave="handleUngroupedDragLeave"
+      @drop="handleUngroupedDrop"
+    >
       <p>No bookmarks yet. Click the + button to add your first bookmark!</p>
       <p class="mt-4 text-sm opacity-70">Or drag and drop a URL from your browser here</p>
     </div>

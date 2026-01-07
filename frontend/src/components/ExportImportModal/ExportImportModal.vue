@@ -374,6 +374,9 @@ async function handleImportConfirm() {
       }
     }
 
+    // Refresh tabs to check if any remain (e.g., from backend migration)
+    await tabStore.fetchTabs()
+
     // Create new tabs first (groups and bookmarks need tab IDs)
     // Store mapping from index to new tab ID
     const tabIndexToId = new Map<number, string>()
@@ -387,13 +390,20 @@ async function handleImportConfirm() {
       }
     }
 
-    // If no tabs were imported, create a default tab for backward compatibility
-    if (importData.value.tabs.length === 0) {
+    // If no tabs were imported and no tabs exist, create a default tab for backward compatibility
+    // Check both importData and actual tabs to avoid creating duplicate default tabs
+    if (importData.value.tabs.length === 0 && tabStore.tabs.length === 0) {
       try {
         const defaultTab = await tabStore.addTab({ name: 'Default' })
         tabIndexToId.set(0, defaultTab.id)
       } catch (err) {
         console.error('Failed to create default tab:', err)
+      }
+    } else if (importData.value.tabs.length === 0 && tabStore.tabs.length > 0) {
+      // If no tabs were imported but tabs exist (e.g., from migration), use the first existing tab
+      const existingTab = tabStore.tabs[0]
+      if (existingTab) {
+        tabIndexToId.set(0, existingTab.id)
       }
     }
 
