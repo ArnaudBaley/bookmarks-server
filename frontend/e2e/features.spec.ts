@@ -94,6 +94,15 @@ async function waitForBookmarksLoaded(page: Page) {
     const tabs = localStorage.getItem('tabs-mock-data')
     return tabs !== null && JSON.parse(tabs).length > 0
   }, { timeout: 5000 })
+  // Wait for active tab to be set in Pinia store (check via page evaluation)
+  await page.waitForFunction(() => {
+    // Check if the app has initialized by looking for the tab switcher or any tab button
+    return document.querySelector('[data-testid="tab-button"], button[aria-label*="tab" i], .tab-button') !== null ||
+           document.querySelector('button:has-text("Default Tab")') !== null ||
+           document.body.textContent?.includes('Default Tab') === true
+  }, { timeout: 5000 }).catch(() => {
+    // If we can't find tab buttons, that's okay - just continue
+  })
 }
 
 test.describe('Bookmark Management', () => {
@@ -156,7 +165,27 @@ test.describe('Bookmark Management', () => {
     await page.getByRole('button', { name: 'Add Bookmark' }).click()
 
     await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeHidden()
-    await expect(page.getByText('TypeScript')).toBeVisible()
+    
+    // Wait for bookmark to be saved to localStorage with correct tabId
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('bookmarks-mock-data')
+      if (!stored) return false
+      try {
+        const bookmarks = JSON.parse(stored)
+        const tabs = localStorage.getItem('tabs-mock-data')
+        if (!tabs) return false
+        const tabsData = JSON.parse(tabs)
+        const activeTabId = tabsData[0]?.id
+        return bookmarks.length > 0 && bookmarks.some((b: Bookmark) => 
+          b.name === 'TypeScript' && b.tabId === activeTabId
+        )
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
+    
+    // Wait for UI to update and show the bookmark (this will wait for Vue reactivity)
+    await expect(page.getByText('TypeScript')).toBeVisible({ timeout: 5000 })
 
     // Verify URL was normalized with https://
     const bookmarks = await getMockBookmarks(page)
@@ -301,14 +330,34 @@ test.describe('Bookmark Management', () => {
     await page.getByRole('button', { name: 'Add Bookmark' }).click()
 
     await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeHidden()
-    await expect(page.getByText('Persistent Bookmark')).toBeVisible()
+    
+    // Wait for bookmark to be saved to localStorage with correct tabId
+    await page.waitForFunction(() => {
+      const stored = localStorage.getItem('bookmarks-mock-data')
+      if (!stored) return false
+      try {
+        const bookmarks = JSON.parse(stored)
+        const tabs = localStorage.getItem('tabs-mock-data')
+        if (!tabs) return false
+        const tabsData = JSON.parse(tabs)
+        const activeTabId = tabsData[0]?.id
+        return bookmarks.length > 0 && bookmarks.some((b: Bookmark) => 
+          b.name === 'Persistent Bookmark' && b.tabId === activeTabId
+        )
+      } catch {
+        return false
+      }
+    }, { timeout: 5000 })
+    
+    // Wait for UI to update and show the bookmark (this will wait for Vue reactivity)
+    await expect(page.getByText('Persistent Bookmark')).toBeVisible({ timeout: 5000 })
 
     // Reload page
     await page.reload()
     await waitForBookmarksLoaded(page)
 
     // Verify bookmark still exists after reload
-    await expect(page.getByText('Persistent Bookmark')).toBeVisible()
+    await expect(page.getByText('Persistent Bookmark')).toBeVisible({ timeout: 5000 })
   })
 
   test('should open bookmark URL in new tab when clicked', async ({ page, context }) => {

@@ -1,6 +1,16 @@
+# Bugs
+
 - Export / import feature is broken. It seem that export data is not complete
 
+- 
+
+
+# Tests
+
 - Check that e2e tests covers main features. For example, deleting a tab is not covered.
+
+
+# Features
 
 - When user click on the option icon on a bookmark, instead of directly open the modal, it will replace the button by a modify icon and add a button delete on the left of the modify icon.
 
