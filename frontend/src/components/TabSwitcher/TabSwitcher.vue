@@ -39,7 +39,7 @@ function handleAddTab() {
       >
         <button
           @click="handleTabClick(tab.id)"
-          class="px-4 py-2 rounded-t-lg transition-all duration-200 cursor-pointer flex items-center gap-2 whitespace-nowrap border-b-2"
+          class="pl-4 pr-8 py-2 rounded-t-lg transition-all duration-200 cursor-pointer flex items-center gap-2 whitespace-nowrap border-b-2"
           :class="
             activeTabId === tab.id
               ? 'bg-[var(--color-background-soft)] border-[var(--color-text)] text-[var(--color-text)] font-medium'

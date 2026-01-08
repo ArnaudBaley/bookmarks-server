@@ -376,13 +376,6 @@ describe('HomeView', () => {
     expect(formAfterDelete.exists()).toBe(false)
   })
 
-  it('renders ThemeToggle component', () => {
-    const wrapper = mountWithPinia(HomeView)
-
-    const themeToggle = wrapper.findComponent({ name: 'ThemeToggle' })
-    expect(themeToggle.exists()).toBe(true)
-  })
-
   it('displays correct page title', () => {
     const wrapper = mountWithPinia(HomeView)
 

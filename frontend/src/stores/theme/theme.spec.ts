@@ -35,23 +35,23 @@ describe('Theme Store', () => {
       expect(store.theme).toBe('dark')
     })
 
-    it('falls back to light theme when system preference is light', () => {
+    it('defaults to dark theme when system preference is light', () => {
       mockMatchMedia(false) // Light mode preferred
       const store = useThemeStore()
-      expect(store.theme).toBe('light')
+      expect(store.theme).toBe('dark')
     })
 
-    it('defaults to light theme when no preference is set', () => {
+    it('defaults to dark theme when no preference is set', () => {
       // No localStorage, no matchMedia
       const store = useThemeStore()
-      expect(store.theme).toBe('light')
+      expect(store.theme).toBe('dark')
     })
 
     it('ignores invalid localStorage values', () => {
       localStorage.setItem('bookmarks-theme', 'invalid')
       const store = useThemeStore()
       // Should fall back to system preference or default
-      expect(store.theme).toBe('light')
+      expect(store.theme).toBe('dark')
     })
   })
 

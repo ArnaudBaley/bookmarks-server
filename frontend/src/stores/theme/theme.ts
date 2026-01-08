@@ -6,7 +6,7 @@ export type Theme = 'light' | 'dark'
 const THEME_STORAGE_KEY = 'bookmarks-theme'
 
 function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'light'
+  if (typeof window === 'undefined') return 'dark'
   
   // Check localStorage first
   const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
@@ -19,7 +19,7 @@ function getInitialTheme(): Theme {
     return 'dark'
   }
   
-  return 'light'
+  return 'dark'
 }
 
 export const useThemeStore = defineStore('theme', () => {

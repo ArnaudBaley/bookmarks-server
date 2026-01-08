@@ -1,6 +1,9 @@
 # Bugs
 
 
+# UI
+
+- Change the settings icon. I want a toothed wheel.
 
 # Tests
 
@@ -8,6 +11,8 @@
 
 
 # Features
+
+- Each tab must correspond to a route
 
 - UI tests in docker instead from host
 

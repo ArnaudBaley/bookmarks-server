@@ -13,7 +13,6 @@ import TabSwitcher from '@/components/TabSwitcher/TabSwitcher.vue'
 import AddTabForm from '@/components/AddTabForm/AddTabForm.vue'
 import EditTabForm from '@/components/EditTabForm/EditTabForm.vue'
 import SettingsModal from '@/components/SettingsModal/SettingsModal.vue'
-import ThemeToggle from '@/components/ThemeToggle/ThemeToggle.vue'
 import type { CreateBookmarkDto, UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
 import type { CreateGroupDto, UpdateGroupDto, Group } from '@/types/group'
 import type { CreateTabDto, UpdateTabDto, Tab } from '@/types/tab'
@@ -371,7 +370,6 @@ async function handleUngroupedDrop(event: DragEvent) {
     <div class="flex justify-between items-center mb-8">
       <h1 class="m-0 text-[var(--color-text)]">My Bookmarks</h1>
       <div class="flex gap-4 items-center">
-        <ThemeToggle />
         <button
           class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
           @click="showAddTabForm = true"
