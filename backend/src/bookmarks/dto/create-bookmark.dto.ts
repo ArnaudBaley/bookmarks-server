@@ -10,7 +10,12 @@ export class CreateBookmarkDto {
 
   @IsOptional()
   @IsString()
-  tabId?: string;
+  tabId?: string; // Keep for backward compatibility
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tabIds?: string[];
 
   @IsOptional()
   @IsArray()

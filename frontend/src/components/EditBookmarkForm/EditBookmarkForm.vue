@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import type { UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
-import { useGroupStore } from '@/stores/group/group'
+import type { Group } from '@/types/group'
+import type { Tab } from '@/types/tab'
+import { useTabStore } from '@/stores/tab/tab'
+import { groupApi } from '@/services/groupApi/groupApi'
 
 interface Props {
   bookmark: Bookmark
@@ -16,11 +19,16 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const groupStore = useGroupStore()
+const tabStore = useTabStore()
 
 const name = ref('')
 const url = ref('')
+const selectedTabIds = ref<string[]>([])
 const selectedGroupIds = ref<string[]>([])
+const originalTabIds = ref<string[]>([]) // Store original tabIds to detect changes
+const allGroups = ref<Group[]>([])
+const allTabs = ref<Tab[]>([])
+const expandedTabs = ref<Set<string>>(new Set())
 const error = ref<string | null>(null)
 const nameInputRef = ref<HTMLInputElement | null>(null)
 
@@ -33,7 +41,31 @@ function handleEscapeKey(event: KeyboardEvent) {
 onMounted(async () => {
   name.value = props.bookmark.name
   url.value = props.bookmark.url
+  // Support both tabIds (new) and tabId (backward compatibility)
+  const initialTabIds = props.bookmark.tabIds 
+    ? [...props.bookmark.tabIds] 
+    : (props.bookmark.tabId ? [props.bookmark.tabId] : [])
+  selectedTabIds.value = [...initialTabIds]
+  originalTabIds.value = [...initialTabIds] // Store original for comparison
   selectedGroupIds.value = props.bookmark.groupIds ? [...props.bookmark.groupIds] : []
+  
+  // Fetch all tabs and groups
+  await tabStore.fetchTabs()
+  allTabs.value = tabStore.tabs
+  
+  try {
+    allGroups.value = await groupApi.getAllGroups()
+    // Expand all tabs by default for better UX
+    allTabs.value.forEach(tab => expandedTabs.value.add(tab.id))
+    // Also expand tabs that contain the bookmark's current tabs
+    selectedTabIds.value.forEach(tabId => {
+      expandedTabs.value.add(tabId)
+    })
+  } catch (err) {
+    console.error('Error fetching groups:', err)
+    error.value = 'Failed to load groups'
+  }
+  
   window.addEventListener('keydown', handleEscapeKey)
   await nextTick()
   nameInputRef.value?.focus()
@@ -82,11 +114,14 @@ function handleSubmit() {
     return
   }
 
-  emit('submit', props.bookmark.id, {
+  const updateData: UpdateBookmarkDto = {
     name: name.value.trim(),
     url: normalizedUrl,
     groupIds: selectedGroupIds.value,
-  })
+    tabIds: selectedTabIds.value.length > 0 ? selectedTabIds.value : undefined,
+  }
+
+  emit('submit', props.bookmark.id, updateData)
 }
 
 function handleDelete() {
@@ -96,9 +131,25 @@ function handleDelete() {
 function handleCancel() {
   name.value = props.bookmark.name
   url.value = props.bookmark.url
+  const resetTabIds = props.bookmark.tabIds 
+    ? [...props.bookmark.tabIds] 
+    : (props.bookmark.tabId ? [props.bookmark.tabId] : [])
+  selectedTabIds.value = [...resetTabIds]
+  originalTabIds.value = [...resetTabIds]
   selectedGroupIds.value = props.bookmark.groupIds ? [...props.bookmark.groupIds] : []
   error.value = null
   emit('cancel')
+}
+
+function toggleTab(tabId: string) {
+  const index = selectedTabIds.value.indexOf(tabId)
+  if (index === -1) {
+    // Add tab if not selected
+    selectedTabIds.value.push(tabId)
+  } else {
+    // Remove tab if already selected
+    selectedTabIds.value.splice(index, 1)
+  }
 }
 
 function toggleGroup(groupId: string) {
@@ -110,7 +161,45 @@ function toggleGroup(groupId: string) {
   }
 }
 
-const availableGroups = computed(() => groupStore.groups)
+function toggleTabExpansion(tabId: string) {
+  if (expandedTabs.value.has(tabId)) {
+    expandedTabs.value.delete(tabId)
+  } else {
+    expandedTabs.value.add(tabId)
+  }
+}
+
+// Organize groups by tabId
+const groupsByTab = computed(() => {
+  const grouped = new Map<string, Group[]>()
+  
+  // Initialize all tabs with empty arrays
+  allTabs.value.forEach(tab => {
+    grouped.set(tab.id, [])
+  })
+  
+  // Add groups to their respective tabs
+  allGroups.value.forEach(group => {
+    if (group.tabId) {
+      if (!grouped.has(group.tabId)) {
+        grouped.set(group.tabId, [])
+      }
+      grouped.get(group.tabId)!.push(group)
+    }
+  })
+  
+  // Sort groups within each tab by name
+  grouped.forEach((groups) => {
+    groups.sort((a, b) => a.name.localeCompare(b.name))
+  })
+  
+  return grouped
+})
+
+// Get sorted tabs for display
+const sortedTabs = computed(() => {
+  return [...allTabs.value].sort((a, b) => a.name.localeCompare(b.name))
+})
 </script>
 
 <template>
@@ -178,35 +267,96 @@ const availableGroups = computed(() => groupStore.groups)
         </div>
         <div class="mb-6">
           <label class="block mb-2 text-[var(--color-text)] font-medium">
-            Groups
+            Tab & Groups
           </label>
           <div
-            v-if="availableGroups.length === 0"
+            v-if="sortedTabs.length === 0"
             class="text-sm text-[var(--color-text)] opacity-60 py-2"
           >
-            No groups available. Create a group first.
+            No tabs available. Create a tab first.
           </div>
           <div
             v-else
-            class="flex flex-col gap-2 max-h-48 overflow-y-auto p-2 border border-[var(--color-border)] rounded bg-[var(--color-background-soft)]"
+            class="flex flex-col gap-2 max-h-64 overflow-y-auto p-2 border border-[var(--color-border)] rounded bg-[var(--color-background-soft)]"
           >
-            <label
-              v-for="group in availableGroups"
-              :key="group.id"
-              class="flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-[var(--color-background-mute)] transition-colors duration-200"
+            <div
+              v-for="tab in sortedTabs"
+              :key="tab.id"
+              class="flex flex-col"
             >
-              <input
-                type="checkbox"
-                :checked="selectedGroupIds.includes(group.id)"
-                @change="toggleGroup(group.id)"
-                class="w-4 h-4 cursor-pointer"
-              />
+              <!-- Tab checkbox -->
+              <label
+                class="flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-[var(--color-background-mute)] transition-colors duration-200"
+              >
+                <input
+                  type="checkbox"
+                  :checked="selectedTabIds.includes(tab.id)"
+                  @change="toggleTab(tab.id)"
+                  class="w-4 h-4 cursor-pointer"
+                />
+                <span
+                  v-if="tab.color"
+                  class="w-4 h-4 rounded-full flex-shrink-0"
+                  :style="{ backgroundColor: tab.color }"
+                />
+                <span class="text-[var(--color-text)] font-medium">{{ tab.name }}</span>
+                <span class="text-sm text-[var(--color-text)] opacity-60">
+                  ({{ groupsByTab.get(tab.id)?.length || 0 }} groups)
+                </span>
+                <button
+                  v-if="groupsByTab.get(tab.id) && groupsByTab.get(tab.id)!.length > 0"
+                  type="button"
+                  @click="toggleTabExpansion(tab.id)"
+                  class="ml-auto p-1 rounded cursor-pointer hover:bg-[var(--color-background-mute)] transition-colors duration-200"
+                  :aria-label="expandedTabs.has(tab.id) ? 'Collapse groups' : 'Expand groups'"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="transition-transform duration-200 flex-shrink-0"
+                    :class="{ 'rotate-90': expandedTabs.has(tab.id) }"
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              </label>
+              <!-- Groups under this tab -->
               <div
-                class="w-4 h-4 rounded-full flex-shrink-0"
-                :style="{ backgroundColor: group.color }"
-              />
-              <span class="text-[var(--color-text)]">{{ group.name }}</span>
-            </label>
+                v-if="expandedTabs.has(tab.id)"
+                class="ml-8 flex flex-col gap-1"
+              >
+                <label
+                  v-for="group in groupsByTab.get(tab.id) || []"
+                  :key="group.id"
+                  class="flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-[var(--color-background-mute)] transition-colors duration-200"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="selectedGroupIds.includes(group.id)"
+                    @change="toggleGroup(group.id)"
+                    class="w-4 h-4 cursor-pointer"
+                  />
+                  <div
+                    class="w-4 h-4 rounded-full flex-shrink-0"
+                    :style="{ backgroundColor: group.color }"
+                  />
+                  <span class="text-[var(--color-text)]">{{ group.name }}</span>
+                </label>
+                <div
+                  v-if="!groupsByTab.get(tab.id) || groupsByTab.get(tab.id)!.length === 0"
+                  class="text-sm text-[var(--color-text)] opacity-60 py-2 pl-6"
+                >
+                  No groups in this tab
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div v-if="error" class="text-[#dc3545] mb-4 text-sm">{{ error }}</div>

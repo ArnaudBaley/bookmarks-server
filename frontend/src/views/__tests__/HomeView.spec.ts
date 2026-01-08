@@ -214,7 +214,10 @@ describe('HomeView', () => {
 
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('No bookmarks yet. Click the + button to add your first bookmark!')
+    // The component always shows the "Ungrouped" section, even when empty
+    // So we check for that instead of an empty state message
+    expect(wrapper.text()).toContain('Ungrouped')
+    expect(wrapper.text()).toContain('(0)')
   })
 
   it('renders bookmark cards when bookmarks exist', async () => {
@@ -243,15 +246,18 @@ describe('HomeView', () => {
   })
 
   it('shows AddBookmarkForm when + button is clicked', async () => {
-    const wrapper = mountWithPinia(HomeView)
-
-    // First, click the add menu button to open the dropdown
-    const addMenuButton = wrapper.find('button[aria-label="Add"]')
-    await addMenuButton.trigger('click')
+    const pinia = createTestPinia()
+    setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     await wrapper.vm.$nextTick()
 
-    // Then, click the "Add new bookmark" button inside the dropdown
+    // Click the "Add new bookmark" button directly (no dropdown menu)
     const addButton = wrapper.find('button[aria-label="Add new bookmark"]')
+    expect(addButton.exists()).toBe(true)
     await addButton.trigger('click')
     await wrapper.vm.$nextTick()
 
@@ -267,11 +273,13 @@ describe('HomeView', () => {
   })
 
   it('hides AddBookmarkForm when cancel event is emitted', async () => {
-    const wrapper = mountWithPinia(HomeView)
-
-    // First, click the add menu button to open the dropdown
-    const addMenuButton = wrapper.find('button[aria-label="Add"]')
-    await addMenuButton.trigger('click')
+    const pinia = createTestPinia()
+    setupTabs()
+    const wrapper = mount(HomeView, {
+      global: {
+        plugins: [pinia],
+      },
+    })
     await wrapper.vm.$nextTick()
 
     // Show form
@@ -296,14 +304,11 @@ describe('HomeView', () => {
         plugins: [pinia],
       },
     })
+    await wrapper.vm.$nextTick()
+    
     const store = useBookmarkStore()
 
     const addBookmarkSpy = vi.spyOn(store, 'addBookmark').mockResolvedValue(createBookmark())
-
-    // First, click the add menu button to open the dropdown
-    const addMenuButton = wrapper.find('button[aria-label="Add"]')
-    await addMenuButton.trigger('click')
-    await wrapper.vm.$nextTick()
 
     // Show form
     const addButton = wrapper.find('button[aria-label="Add new bookmark"]')
@@ -315,7 +320,7 @@ describe('HomeView', () => {
     await form.vm.$emit('submit', { name: 'Test', url: 'https://example.com' })
     await wrapper.vm.$nextTick()
 
-    expect(addBookmarkSpy).toHaveBeenCalledWith({ name: 'Test', url: 'https://example.com', tabId: tabStore.activeTabId })
+    expect(addBookmarkSpy).toHaveBeenCalledWith({ name: 'Test', url: 'https://example.com', tabId: tabStore.activeTabId, groupIds: [] })
 
     // Form should be hidden after successful submission
     const formAfterSubmit = wrapper.findComponent({ name: 'AddBookmarkForm' })
@@ -330,17 +335,14 @@ describe('HomeView', () => {
         plugins: [pinia],
       },
     })
+    await wrapper.vm.$nextTick()
+    
     const store = useBookmarkStore()
 
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const addBookmarkSpy = vi
       .spyOn(store, 'addBookmark')
       .mockRejectedValue(new Error('Failed to add bookmark'))
-
-    // First, click the add menu button to open the dropdown
-    const addMenuButton = wrapper.find('button[aria-label="Add"]')
-    await addMenuButton.trigger('click')
-    await wrapper.vm.$nextTick()
 
     // Show form
     const addButton = wrapper.find('button[aria-label="Add new bookmark"]')

@@ -14,7 +14,11 @@ export const useBookmarkStore = defineStore('bookmark', () => {
   const filteredBookmarks = computed(() => {
     const tabStore = useTabStore()
     if (!tabStore.activeTabId) return []
-    return bookmarks.value.filter((bookmark) => bookmark.tabId === tabStore.activeTabId)
+    return bookmarks.value.filter((bookmark) => {
+      // Check both tabId (backward compatibility) and tabIds (multiple tabs support)
+      return bookmark.tabId === tabStore.activeTabId || 
+             bookmark.tabIds?.includes(tabStore.activeTabId) === true
+    })
   })
 
   function getBookmarksByGroup(groupId: string) {

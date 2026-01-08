@@ -25,7 +25,8 @@ export class BookmarksController {
       id: bookmark.id,
       name: bookmark.name,
       url: bookmark.url,
-      tabId: bookmark.tabId,
+      tabId: bookmark.tabId, // Keep for backward compatibility
+      tabIds: bookmark.tabs?.map((tab) => tab.id) || [],
       groupIds: bookmark.groups?.map((group) => group.id) || [],
       createdAt: bookmark.createdAt?.toISOString(),
       updatedAt: bookmark.updatedAt?.toISOString(),
@@ -39,7 +40,8 @@ export class BookmarksController {
       id: bookmark.id,
       name: bookmark.name,
       url: bookmark.url,
-      tabId: bookmark.tabId,
+      tabId: bookmark.tabId, // Keep for backward compatibility
+      tabIds: bookmark.tabs?.map((tab) => tab.id) || [],
       groupIds: bookmark.groups?.map((group) => group.id) || [],
       createdAt: bookmark.createdAt?.toISOString(),
       updatedAt: bookmark.updatedAt?.toISOString(),
@@ -56,7 +58,8 @@ export class BookmarksController {
       id: bookmark.id,
       name: bookmark.name,
       url: bookmark.url,
-      tabId: bookmark.tabId,
+      tabId: bookmark.tabId, // Keep for backward compatibility
+      tabIds: bookmark.tabs?.map((tab) => tab.id) || [],
       groupIds: bookmark.groups?.map((group) => group.id) || [],
       createdAt: bookmark.createdAt?.toISOString(),
       updatedAt: bookmark.updatedAt?.toISOString(),

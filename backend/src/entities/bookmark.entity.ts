@@ -24,11 +24,19 @@ export class Bookmark {
   url: string;
 
   @Column('varchar', { length: 36, nullable: true })
-  tabId: string | null;
+  tabId: string | null; // Keep for backward compatibility
 
-  @ManyToOne(() => Tab)
+  @ManyToOne(() => Tab, { nullable: true })
   @JoinColumn({ name: 'tabId' })
   tab: Tab;
+
+  @ManyToMany(() => Tab)
+  @JoinTable({
+    name: 'bookmark_tabs',
+    joinColumn: { name: 'bookmark_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'tab_id', referencedColumnName: 'id' },
+  })
+  tabs: Tab[];
 
   @ManyToMany(() => Group, (group) => group.bookmarks)
   @JoinTable({

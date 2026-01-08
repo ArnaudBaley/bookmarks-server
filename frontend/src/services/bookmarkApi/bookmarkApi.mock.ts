@@ -38,7 +38,9 @@ export class MockBookmarkApi implements IBookmarkApi {
     await this.simulateDelay()
     const bookmarks = this.getStorage()
     if (tabId) {
-      return bookmarks.filter((bookmark) => bookmark.tabId === tabId)
+      return bookmarks.filter((bookmark) => 
+        bookmark.tabId === tabId || bookmark.tabIds?.includes(tabId)
+      )
     }
     return bookmarks
   }
@@ -48,11 +50,16 @@ export class MockBookmarkApi implements IBookmarkApi {
     await this.simulateDelay()
 
     const bookmarks = this.getStorage()
+    // Support both tabIds (new) and tabId (backward compatibility)
+    const tabIds = data.tabIds || (data.tabId ? [data.tabId] : [])
+    const tabId = data.tabId || (tabIds.length > 0 ? tabIds[0] : undefined)
+    
     const newBookmark: Bookmark = {
       id: crypto.randomUUID(),
       name: data.name,
       url: data.url,
-      tabId: data.tabId,
+      tabId,
+      tabIds: tabIds.length > 0 ? tabIds : undefined,
       groupIds: data.groupIds,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -73,11 +80,24 @@ export class MockBookmarkApi implements IBookmarkApi {
       throw new Error(`Bookmark with id ${id} not found`)
     }
 
+    // Handle tabIds (new) or tabId (backward compatibility)
+    let tabId: string | undefined
+    let tabIds: string[] | undefined
+    
+    if (data.tabIds !== undefined) {
+      tabIds = data.tabIds.length > 0 ? data.tabIds : undefined
+      tabId = tabIds && tabIds.length > 0 ? tabIds[0] : undefined
+    } else if (data.tabId !== undefined) {
+      tabId = data.tabId
+      tabIds = data.tabId ? [data.tabId] : undefined
+    }
+
     const updatedBookmark: Bookmark = {
       ...bookmarks[bookmarkIndex],
       ...(data.name !== undefined && { name: data.name }),
       ...(data.url !== undefined && { url: data.url }),
-      ...(data.tabId !== undefined && { tabId: data.tabId }),
+      ...(tabId !== undefined && { tabId }),
+      ...(tabIds !== undefined && { tabIds }),
       groupIds: data.groupIds !== undefined ? data.groupIds : bookmarks[bookmarkIndex].groupIds,
       updatedAt: new Date().toISOString(),
     }

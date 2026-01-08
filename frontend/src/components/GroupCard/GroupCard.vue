@@ -16,6 +16,7 @@ interface Emits {
   (e: 'bookmark-drop', groupId: string, bookmarkId: string): void
   (e: 'bookmark-modify', bookmark: Bookmark): void
   (e: 'bookmark-delete', id: string): void
+  (e: 'bookmark-add', groupId: string): void
 }
 
 const props = defineProps<Props>()
@@ -213,6 +214,27 @@ async function handleDrop(event: DragEvent) {
         </span>
       </div>
       <div class="flex items-center gap-2">
+        <button
+          class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
+          @click.stop="$emit('bookmark-add', group.id)"
+          aria-label="Add new bookmark"
+          title="Add new bookmark"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
         <button
           class="p-1.5 opacity-60 hover:opacity-100 flex-shrink-0 rounded cursor-pointer transition-opacity duration-200 active:scale-[0.95] text-[var(--color-text)]"
           @click.stop="handleModify"

@@ -2,7 +2,8 @@ export interface Bookmark {
   id: string
   name: string
   url: string
-  tabId: string
+  tabId?: string // Keep for backward compatibility, but prefer tabIds
+  tabIds?: string[]
   groupIds?: string[]
   createdAt?: string
   updatedAt?: string
@@ -11,14 +12,16 @@ export interface Bookmark {
 export interface CreateBookmarkDto {
   name: string
   url: string
-  tabId: string
+  tabId?: string // Keep for backward compatibility
+  tabIds?: string[]
   groupIds?: string[]
 }
 
 export interface UpdateBookmarkDto {
   name?: string
   url?: string
-  tabId?: string
+  tabId?: string // Keep for backward compatibility
+  tabIds?: string[]
   groupIds?: string[]
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { useGroupStore } from '@/stores/group/group'
@@ -28,12 +28,12 @@ const showAddForm = ref(false)
 const showAddGroupForm = ref(false)
 const showAddTabForm = ref(false)
 const showSettingsModal = ref(false)
-const showAddMenu = ref(false)
 const editingBookmark = ref<Bookmark | null>(null)
 const editingGroup = ref<Group | null>(null)
 const editingTab = ref<Tab | null>(null)
 const isDragOverUngrouped = ref(false)
 const isUngroupedExpanded = ref(true)
+const selectedGroupIdForBookmark = ref<string | null>(null)
 
 const ungroupedBookmarks = computed(() => groupStore.getUngroupedBookmarks())
 const filteredGroups = computed(() => groupStore.filteredGroups)
@@ -99,14 +99,6 @@ watch(() => tabStore.activeTabId, () => {
   }
 })
 
-// Close add menu when clicking outside
-function handleClickOutside(event: MouseEvent) {
-  const target = event.target as HTMLElement
-  const addMenuButton = target.closest('.add-menu-container')
-  if (!addMenuButton && showAddMenu.value) {
-    showAddMenu.value = false
-  }
-}
 
 onMounted(async () => {
   await tabStore.fetchTabs()
@@ -133,13 +125,6 @@ onMounted(async () => {
     groupStore.fetchGroups()
   }
   
-  // Add click outside listener
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  // Remove click outside listener
-  document.removeEventListener('click', handleClickOutside)
 })
 
 async function handleAddBookmark(data: CreateBookmarkDto) {
@@ -148,21 +133,32 @@ async function handleAddBookmark(data: CreateBookmarkDto) {
       console.error('No active tab selected')
       // Still close the form even if there's an error
       showAddForm.value = false
-      showAddMenu.value = false
+      selectedGroupIdForBookmark.value = null
       return
     }
     await bookmarkStore.addBookmark({
       ...data,
       tabId: tabStore.activeTabId,
+      groupIds: selectedGroupIdForBookmark.value ? [selectedGroupIdForBookmark.value] : [],
     })
     showAddForm.value = false
-    showAddMenu.value = false
+    selectedGroupIdForBookmark.value = null
   } catch (error) {
     console.error('Failed to add bookmark:', error)
     // Close the form even on error to prevent it from staying open
     showAddForm.value = false
-    showAddMenu.value = false
+    selectedGroupIdForBookmark.value = null
   }
+}
+
+function handleAddBookmarkFromGroup(groupId: string) {
+  selectedGroupIdForBookmark.value = groupId
+  showAddForm.value = true
+}
+
+function handleAddBookmarkFromUngrouped() {
+  selectedGroupIdForBookmark.value = null
+  showAddForm.value = true
 }
 
 async function handleModifyBookmark(bookmark: Bookmark) {
@@ -201,7 +197,6 @@ async function handleAddGroup(data: CreateGroupDto) {
       console.error('No active tab selected')
       // Still close the form even if there's an error
       showAddGroupForm.value = false
-      showAddMenu.value = false
       return
     }
     await groupStore.addGroup({
@@ -209,12 +204,10 @@ async function handleAddGroup(data: CreateGroupDto) {
       tabId: tabStore.activeTabId,
     })
     showAddGroupForm.value = false
-    showAddMenu.value = false
   } catch (error) {
     console.error('Failed to add group:', error)
     // Close the form even on error to prevent it from staying open
     showAddGroupForm.value = false
-    showAddMenu.value = false
   }
 }
 
@@ -244,7 +237,6 @@ async function handleAddTab(data: CreateTabDto) {
   try {
     const newTab = await tabStore.addTab(data)
     showAddTabForm.value = false
-    showAddMenu.value = false
     // Navigate to the new tab
     if (newTab) {
       router.push({ name: 'tab', params: { tabName: encodeTabName(newTab.name) } })
@@ -254,8 +246,6 @@ async function handleAddTab(data: CreateTabDto) {
     // Error is already set in the store, AddTabForm will display it
     // Don't close the form on error so user can see the error message
     // The form will stay open to show the error
-    // But close the menu
-    showAddMenu.value = false
   }
 }
 
@@ -496,103 +486,6 @@ async function handleUngroupedDrop(event: DragEvent) {
     <div class="flex justify-between items-center mb-8">
       <h1 class="m-0 text-[var(--color-text)]">My Bookmarks</h1>
       <div class="flex gap-4 items-center">
-        <!-- Add Menu Button with Dropdown -->
-        <div class="relative add-menu-container">
-          <button
-            class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
-            :class="{ 'bg-[var(--color-background-mute)] border-[var(--color-border-hover)]': showAddMenu }"
-            @click="showAddMenu = !showAddMenu"
-            aria-label="Add"
-            title="Add"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="transition-transform duration-200"
-              :class="{ 'rotate-45': showAddMenu }"
-            >
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </button>
-          <!-- Dropdown Menu -->
-          <div
-            v-if="showAddMenu"
-            class="absolute right-0 top-12 mt-2 w-48 bg-[var(--color-background-soft)] border border-[var(--color-border)] rounded-lg shadow-lg z-50 overflow-hidden"
-            @click.stop
-          >
-            <button
-              class="w-full px-4 py-3 text-left text-[var(--color-text)] hover:bg-[var(--color-background-mute)] transition-colors duration-150 flex items-center gap-3"
-              @click="showAddForm = true; showAddMenu = false"
-              aria-label="Add new bookmark"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-              </svg>
-              <span>Add Bookmark</span>
-            </button>
-            <button
-              class="w-full px-4 py-3 text-left text-[var(--color-text)] hover:bg-[var(--color-background-mute)] transition-colors duration-150 flex items-center gap-3"
-              @click="showAddTabForm = true; showAddMenu = false"
-              aria-label="Add new tab"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="9" y1="3" x2="9" y2="21" />
-              </svg>
-              <span>Add Tab</span>
-            </button>
-            <button
-              class="w-full px-4 py-3 text-left text-[var(--color-text)] hover:bg-[var(--color-background-mute)] transition-colors duration-150 flex items-center gap-3"
-              @click="showAddGroupForm = true; showAddMenu = false"
-              aria-label="Add new group"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="9" y1="3" x2="9" y2="21" />
-                <line x1="3" y1="9" x2="21" y2="9" />
-              </svg>
-              <span>Add Group</span>
-            </button>
-          </div>
-        </div>
         <button
           class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
           @click="showSettingsModal = true"
@@ -618,7 +511,7 @@ async function handleUngroupedDrop(event: DragEvent) {
     </div>
 
     <!-- Tab Switcher -->
-    <TabSwitcher v-if="tabStore.tabs.length > 0" @tab-edit="handleModifyTab" @tab-add="showAddTabForm = true; showAddMenu = false" />
+    <TabSwitcher v-if="tabStore.tabs.length > 0" @tab-edit="handleModifyTab" @tab-add="showAddTabForm = true" />
 
     <div
       v-if="(bookmarkStore.loading || groupStore.loading || tabStore.loading) && bookmarkStore.bookmarks.length === 0 && groupStore.groups.length === 0"
@@ -640,20 +533,8 @@ async function handleUngroupedDrop(event: DragEvent) {
       </button>
     </div>
 
-    <div 
-      v-else-if="bookmarkStore.bookmarks.length === 0 && groupStore.groups.length === 0" 
-      class="text-center py-12 text-[var(--color-text)] transition-all duration-200"
-      :class="{ 'ring-2 ring-offset-2 ring-blue-500': isDragOverUngrouped }"
-      @dragover="handleUngroupedDragOver"
-      @dragleave="handleUngroupedDragLeave"
-      @drop="handleUngroupedDrop"
-    >
-      <p>No bookmarks yet. Click the + button to add your first bookmark!</p>
-      <p class="mt-4 text-sm opacity-70">Or drag and drop a URL from your browser here</p>
-    </div>
-
     <div v-else>
-      <!-- Ungrouped Bookmarks -->
+      <!-- Ungrouped Bookmarks - Always displayed -->
       <div
         class="mb-6 transition-all duration-200"
         :class="{ 'ring-2 ring-offset-2 ring-blue-500': isDragOverUngrouped }"
@@ -671,26 +552,49 @@ async function handleUngroupedDrop(event: DragEvent) {
               ({{ ungroupedBookmarks.length }})
             </span>
           </div>
-          <button
-            class="p-1.5 opacity-60 hover:opacity-100 flex-shrink-0 rounded cursor-pointer transition-transform duration-200 text-[var(--color-text)]"
-            :class="{ 'rotate-180': isUngroupedExpanded }"
-            @click.stop="isUngroupedExpanded = !isUngroupedExpanded"
-            aria-label="Toggle ungrouped section"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+          <div class="flex items-center gap-2">
+            <button
+              class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
+              @click.stop="handleAddBookmarkFromUngrouped"
+              aria-label="Add new bookmark"
+              title="Add new bookmark"
             >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+            <button
+              class="p-1.5 opacity-60 hover:opacity-100 flex-shrink-0 rounded cursor-pointer transition-transform duration-200 text-[var(--color-text)]"
+              :class="{ 'rotate-180': isUngroupedExpanded }"
+              @click.stop="isUngroupedExpanded = !isUngroupedExpanded"
+              aria-label="Toggle ungrouped section"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div
           v-show="isUngroupedExpanded"
@@ -699,7 +603,7 @@ async function handleUngroupedDrop(event: DragEvent) {
           @dragleave="handleUngroupedDragLeave"
           @drop="handleUngroupedDrop"
         >
-          <div v-if="ungroupedBookmarks.length > 0" class="grid grid-cols-[repeat(auto-fill,minmax(288px,1fr))] gap-3">
+          <div class="grid grid-cols-[repeat(auto-fill,minmax(288px,1fr))] gap-3">
             <BookmarkCard
               v-for="bookmark in ungroupedBookmarks"
               :key="bookmark.id"
@@ -707,10 +611,6 @@ async function handleUngroupedDrop(event: DragEvent) {
               @modify="handleModifyBookmark"
               @delete="handleDeleteBookmark"
             />
-          </div>
-          <div v-else class="text-center py-8 text-[var(--color-text)] opacity-60">
-            <p class="m-0">No ungrouped bookmarks</p>
-            <p class="m-0 mt-2 text-sm">Drag and drop bookmarks here to ungroup them</p>
           </div>
         </div>
       </div>
@@ -726,11 +626,37 @@ async function handleUngroupedDrop(event: DragEvent) {
           @bookmark-drop="handleBookmarkDrop"
           @bookmark-modify="handleModifyBookmark"
           @bookmark-delete="handleDeleteBookmark"
+          @bookmark-add="handleAddBookmarkFromGroup"
         />
+      </div>
+
+      <!-- Add Group Button -->
+      <div class="mb-6 flex justify-center">
+        <button
+          class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
+          @click="showAddGroupForm = true"
+          aria-label="Add new group"
+          title="Add new group"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
       </div>
     </div>
 
-    <AddBookmarkForm v-if="showAddForm" @submit="handleAddBookmark" @cancel="showAddForm = false; showAddMenu = false" />
+    <AddBookmarkForm v-if="showAddForm" @submit="handleAddBookmark" @cancel="() => { showAddForm = false; selectedGroupIdForBookmark = null }" />
     <EditBookmarkForm
       v-if="editingBookmark"
       :bookmark="editingBookmark"
@@ -738,7 +664,7 @@ async function handleUngroupedDrop(event: DragEvent) {
       @delete="handleDeleteFromEditForm"
       @cancel="editingBookmark = null"
     />
-    <AddGroupForm v-if="showAddGroupForm" @submit="handleAddGroup" @cancel="showAddGroupForm = false; showAddMenu = false" />
+    <AddGroupForm v-if="showAddGroupForm" @submit="handleAddGroup" @cancel="showAddGroupForm = false" />
     <EditGroupForm
       v-if="editingGroup"
       :group="editingGroup"
@@ -746,7 +672,7 @@ async function handleUngroupedDrop(event: DragEvent) {
       @delete="handleDeleteGroup"
       @cancel="editingGroup = null"
     />
-    <AddTabForm v-if="showAddTabForm" @submit="handleAddTab" @cancel="showAddTabForm = false; showAddMenu = false" />
+    <AddTabForm v-if="showAddTabForm" @submit="handleAddTab" @cancel="showAddTabForm = false" />
     <EditTabForm
       v-if="editingTab"
       :tab="editingTab"
