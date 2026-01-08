@@ -11,9 +11,6 @@ import { UpdateTabDto } from './dto/update-tab.dto';
 
 describe('TabsService', () => {
   let service: TabsService;
-  let tabRepository: Repository<Tab>;
-  let groupRepository: Repository<Group>;
-  let bookmarkRepository: Repository<Bookmark>;
 
   const mockTabRepository = {
     find: jest.fn(),
@@ -54,11 +51,6 @@ describe('TabsService', () => {
     }).compile();
 
     service = module.get<TabsService>(TabsService);
-    tabRepository = module.get<Repository<Tab>>(getRepositoryToken(Tab));
-    groupRepository = module.get<Repository<Group>>(getRepositoryToken(Group));
-    bookmarkRepository = module.get<Repository<Bookmark>>(
-      getRepositoryToken(Bookmark),
-    );
 
     jest.clearAllMocks();
   });
@@ -137,7 +129,7 @@ describe('TabsService', () => {
 
       expect(result).toEqual(mockCreatedTab);
       expect(mockTabRepository.create).toHaveBeenCalledWith({
-        id: expect.any(String),
+        id: expect.any(String) as string,
         name: createDto.name,
         color: createDto.color,
       });
@@ -161,7 +153,7 @@ describe('TabsService', () => {
 
       expect(result).toEqual(mockCreatedTab);
       expect(mockTabRepository.create).toHaveBeenCalledWith({
-        id: expect.any(String),
+        id: expect.any(String) as string,
         name: createDto.name,
         color: null,
       });
@@ -178,6 +170,8 @@ describe('TabsService', () => {
       const updateDto: UpdateTabDto = { name: 'New Name' };
       const updatedTab = { ...existingTab, name: 'New Name' };
 
+      // First call: findOne to get existing tab (line 80)
+      // Second call: findOne after save to return updated tab (line 98)
       mockTabRepository.findOne
         .mockResolvedValueOnce(existingTab)
         .mockResolvedValueOnce(updatedTab);
@@ -187,6 +181,13 @@ describe('TabsService', () => {
 
       expect(result.name).toBe('New Name');
       expect(mockTabRepository.save).toHaveBeenCalled();
+      expect(mockTabRepository.findOne).toHaveBeenCalledTimes(2);
+      expect(mockTabRepository.findOne).toHaveBeenNthCalledWith(1, {
+        where: { id: '1' },
+      });
+      expect(mockTabRepository.findOne).toHaveBeenNthCalledWith(2, {
+        where: { id: '1' },
+      });
     });
 
     it('should update tab color', async () => {
@@ -279,9 +280,7 @@ describe('TabsService', () => {
         relations: ['groups'],
       });
       expect(mockGroupRepository.remove).toHaveBeenCalledWith(mockGroups);
-      expect(mockBookmarkRepository.remove).toHaveBeenCalledWith(
-        mockBookmarks,
-      );
+      expect(mockBookmarkRepository.remove).toHaveBeenCalledWith(mockBookmarks);
       expect(mockTabRepository.remove).toHaveBeenCalledWith(mockTab);
     });
 
@@ -338,4 +337,3 @@ describe('TabsService', () => {
     });
   });
 });
-

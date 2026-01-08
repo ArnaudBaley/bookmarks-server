@@ -7,6 +7,31 @@ import { useGroupStore } from '@/stores/group/group'
 import { useTabStore } from '@/stores/tab/tab'
 import { MockBookmarkApi } from '@/services/bookmarkApi/bookmarkApi.mock'
 
+// Mock vue-router
+const mockRouter = {
+  push: vi.fn(),
+  replace: vi.fn(),
+  go: vi.fn(),
+  back: vi.fn(),
+  forward: vi.fn(),
+}
+
+const mockRoute = {
+  params: {},
+  query: {},
+  hash: '',
+  name: 'home',
+  path: '/',
+  fullPath: '/',
+  matched: [],
+  meta: {},
+}
+
+vi.mock('vue-router', () => ({
+  useRouter: () => mockRouter,
+  useRoute: () => mockRoute,
+}))
+
 describe('HomeView', () => {
   let mockApi: MockBookmarkApi
 
@@ -16,6 +41,20 @@ describe('HomeView', () => {
     // Create a fresh mock API instance
     mockApi = new MockBookmarkApi()
     mockApi.clearStorage()
+    // Reset router mocks
+    mockRouter.push.mockClear()
+    mockRouter.replace.mockClear()
+    // Reset route mock
+    Object.assign(mockRoute, {
+      params: {},
+      query: {},
+      hash: '',
+      name: 'home',
+      path: '/',
+      fullPath: '/',
+      matched: [],
+      meta: {},
+    })
   })
 
   // Helper function to set up tabs in tests
@@ -34,9 +73,16 @@ describe('HomeView', () => {
     const pinia = createTestPinia()
     const bookmarkStore = useBookmarkStore()
     const groupStore = useGroupStore()
-    setupTabs()
+    const tabStore = setupTabs()
+    
     const fetchBookmarksSpy = vi.spyOn(bookmarkStore, 'fetchBookmarks').mockResolvedValue(undefined)
     const fetchGroupsSpy = vi.spyOn(groupStore, 'fetchGroups').mockResolvedValue(undefined)
+
+    // Mock router.replace to prevent redirect
+    mockRouter.replace.mockImplementation(() => {})
+
+    // Set activeTabId to null initially so the watcher will trigger when we set it
+    tabStore.activeTabId = null
 
     // Now mount the component
     const wrapper = mount(HomeView, {
@@ -45,12 +91,18 @@ describe('HomeView', () => {
       },
     })
 
-    // Wait for onMounted to execute
+    // Wait for onMounted to complete (fetchTabs is mocked, so it resolves immediately)
     await wrapper.vm.$nextTick()
     await new Promise((resolve) => setTimeout(resolve, 100))
+    await wrapper.vm.$nextTick()
 
-    expect(fetchBookmarksSpy).toHaveBeenCalledTimes(1)
-    expect(fetchGroupsSpy).toHaveBeenCalledTimes(1)
+    // Now set activeTabId to trigger the watcher
+    tabStore.activeTabId = 'test-tab-id'
+    await wrapper.vm.$nextTick()
+
+    // The watcher on activeTabId should trigger fetchBookmarks and fetchGroups
+    expect(fetchBookmarksSpy).toHaveBeenCalled()
+    expect(fetchGroupsSpy).toHaveBeenCalled()
   })
 
   it('displays loading state when bookmarks are being fetched', async () => {
@@ -193,9 +245,14 @@ describe('HomeView', () => {
   it('shows AddBookmarkForm when + button is clicked', async () => {
     const wrapper = mountWithPinia(HomeView)
 
+    // First, click the add menu button to open the dropdown
+    const addMenuButton = wrapper.find('button[aria-label="Add"]')
+    await addMenuButton.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    // Then, click the "Add new bookmark" button inside the dropdown
     const addButton = wrapper.find('button[aria-label="Add new bookmark"]')
     await addButton.trigger('click')
-
     await wrapper.vm.$nextTick()
 
     const form = wrapper.findComponent({ name: 'AddBookmarkForm' })
@@ -211,6 +268,11 @@ describe('HomeView', () => {
 
   it('hides AddBookmarkForm when cancel event is emitted', async () => {
     const wrapper = mountWithPinia(HomeView)
+
+    // First, click the add menu button to open the dropdown
+    const addMenuButton = wrapper.find('button[aria-label="Add"]')
+    await addMenuButton.trigger('click')
+    await wrapper.vm.$nextTick()
 
     // Show form
     const addButton = wrapper.find('button[aria-label="Add new bookmark"]')
@@ -237,6 +299,11 @@ describe('HomeView', () => {
     const store = useBookmarkStore()
 
     const addBookmarkSpy = vi.spyOn(store, 'addBookmark').mockResolvedValue(createBookmark())
+
+    // First, click the add menu button to open the dropdown
+    const addMenuButton = wrapper.find('button[aria-label="Add"]')
+    await addMenuButton.trigger('click')
+    await wrapper.vm.$nextTick()
 
     // Show form
     const addButton = wrapper.find('button[aria-label="Add new bookmark"]')
@@ -269,6 +336,11 @@ describe('HomeView', () => {
     const addBookmarkSpy = vi
       .spyOn(store, 'addBookmark')
       .mockRejectedValue(new Error('Failed to add bookmark'))
+
+    // First, click the add menu button to open the dropdown
+    const addMenuButton = wrapper.find('button[aria-label="Add"]')
+    await addMenuButton.trigger('click')
+    await wrapper.vm.$nextTick()
 
     // Show form
     const addButton = wrapper.find('button[aria-label="Add new bookmark"]')

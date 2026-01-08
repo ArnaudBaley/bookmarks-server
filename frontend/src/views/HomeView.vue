@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { useGroupStore } from '@/stores/group/group'
 import { useTabStore } from '@/stores/tab/tab'
@@ -17,6 +18,8 @@ import type { CreateBookmarkDto, UpdateBookmarkDto, Bookmark } from '@/types/boo
 import type { CreateGroupDto, UpdateGroupDto, Group } from '@/types/group'
 import type { CreateTabDto, UpdateTabDto, Tab } from '@/types/tab'
 
+const router = useRouter()
+const route = useRoute()
 const bookmarkStore = useBookmarkStore()
 const groupStore = useGroupStore()
 const tabStore = useTabStore()
@@ -25,6 +28,7 @@ const showAddForm = ref(false)
 const showAddGroupForm = ref(false)
 const showAddTabForm = ref(false)
 const showSettingsModal = ref(false)
+const showAddMenu = ref(false)
 const editingBookmark = ref<Bookmark | null>(null)
 const editingGroup = ref<Group | null>(null)
 const editingTab = ref<Tab | null>(null)
@@ -34,6 +38,59 @@ const isUngroupedExpanded = ref(true)
 const ungroupedBookmarks = computed(() => groupStore.getUngroupedBookmarks())
 const filteredGroups = computed(() => groupStore.filteredGroups)
 
+// Helper function to decode tab name from URL
+function decodeTabName(encodedName: string): string {
+  try {
+    return decodeURIComponent(encodedName)
+  } catch {
+    return encodedName
+  }
+}
+
+// Helper function to encode tab name for URL
+function encodeTabName(name: string): string {
+  return encodeURIComponent(name)
+}
+
+// Sync route with active tab when route changes
+watch(() => route.params.tabName, (tabName) => {
+  if (tabName && typeof tabName === 'string') {
+    const decodedName = decodeTabName(tabName)
+    const tab = tabStore.getTabByName(decodedName)
+    if (tab) {
+      tabStore.setActiveTab(tab.id)
+    } else if (tabStore.tabs.length > 0 && tabStore.tabs[0]) {
+      // Tab doesn't exist, redirect to first tab
+      router.replace({ name: 'tab', params: { tabName: encodeTabName(tabStore.tabs[0].name) } })
+    }
+  } else if (route.name === 'home') {
+    // On home route, redirect to first tab if tabs exist
+    if (tabStore.tabs.length > 0 && tabStore.tabs[0]) {
+      router.replace({ name: 'tab', params: { tabName: encodeTabName(tabStore.tabs[0].name) } })
+    }
+  }
+})
+
+// Sync route when tabs are loaded
+watch(() => tabStore.tabs.length, () => {
+  if (tabStore.tabs.length > 0) {
+    const currentTabName = route.params.tabName
+    if (currentTabName && typeof currentTabName === 'string') {
+      const decodedName = decodeTabName(currentTabName)
+      const tab = tabStore.getTabByName(decodedName)
+      if (tab) {
+        tabStore.setActiveTab(tab.id)
+      } else if (tabStore.tabs[0]) {
+        // Current tab doesn't exist, redirect to first tab
+        router.replace({ name: 'tab', params: { tabName: encodeTabName(tabStore.tabs[0].name) } })
+      }
+    } else if (route.name === 'home' && tabStore.tabs[0]) {
+      // On home route, redirect to first tab
+      router.replace({ name: 'tab', params: { tabName: encodeTabName(tabStore.tabs[0].name) } })
+    }
+  }
+})
+
 // Watch for active tab changes and refetch data
 watch(() => tabStore.activeTabId, () => {
   if (tabStore.activeTabId) {
@@ -42,12 +99,47 @@ watch(() => tabStore.activeTabId, () => {
   }
 })
 
+// Close add menu when clicking outside
+function handleClickOutside(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  const addMenuButton = target.closest('.add-menu-container')
+  if (!addMenuButton && showAddMenu.value) {
+    showAddMenu.value = false
+  }
+}
+
 onMounted(async () => {
   await tabStore.fetchTabs()
-  if (tabStore.activeTabId) {
+  
+  // Handle initial route
+  if (route.params.tabName && typeof route.params.tabName === 'string') {
+    const decodedName = decodeTabName(route.params.tabName)
+    const tab = tabStore.getTabByName(decodedName)
+    if (tab) {
+      tabStore.setActiveTab(tab.id)
+      bookmarkStore.fetchBookmarks()
+      groupStore.fetchGroups()
+    } else if (tabStore.tabs.length > 0 && tabStore.tabs[0]) {
+      // Tab doesn't exist, redirect to first tab
+      router.replace({ name: 'tab', params: { tabName: encodeTabName(tabStore.tabs[0].name) } })
+    }
+  } else if (route.name === 'home') {
+    // On home route, redirect to first tab if tabs exist
+    if (tabStore.tabs.length > 0 && tabStore.tabs[0]) {
+      router.replace({ name: 'tab', params: { tabName: encodeTabName(tabStore.tabs[0].name) } })
+    }
+  } else if (tabStore.activeTabId) {
     bookmarkStore.fetchBookmarks()
     groupStore.fetchGroups()
   }
+  
+  // Add click outside listener
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  // Remove click outside listener
+  document.removeEventListener('click', handleClickOutside)
 })
 
 async function handleAddBookmark(data: CreateBookmarkDto) {
@@ -56,6 +148,7 @@ async function handleAddBookmark(data: CreateBookmarkDto) {
       console.error('No active tab selected')
       // Still close the form even if there's an error
       showAddForm.value = false
+      showAddMenu.value = false
       return
     }
     await bookmarkStore.addBookmark({
@@ -63,10 +156,12 @@ async function handleAddBookmark(data: CreateBookmarkDto) {
       tabId: tabStore.activeTabId,
     })
     showAddForm.value = false
+    showAddMenu.value = false
   } catch (error) {
     console.error('Failed to add bookmark:', error)
     // Close the form even on error to prevent it from staying open
     showAddForm.value = false
+    showAddMenu.value = false
   }
 }
 
@@ -106,6 +201,7 @@ async function handleAddGroup(data: CreateGroupDto) {
       console.error('No active tab selected')
       // Still close the form even if there's an error
       showAddGroupForm.value = false
+      showAddMenu.value = false
       return
     }
     await groupStore.addGroup({
@@ -113,10 +209,12 @@ async function handleAddGroup(data: CreateGroupDto) {
       tabId: tabStore.activeTabId,
     })
     showAddGroupForm.value = false
+    showAddMenu.value = false
   } catch (error) {
     console.error('Failed to add group:', error)
     // Close the form even on error to prevent it from staying open
     showAddGroupForm.value = false
+    showAddMenu.value = false
   }
 }
 
@@ -144,10 +242,20 @@ async function handleDeleteGroup(id: string) {
 
 async function handleAddTab(data: CreateTabDto) {
   try {
-    await tabStore.addTab(data)
+    const newTab = await tabStore.addTab(data)
     showAddTabForm.value = false
-  } catch (error) {
+    showAddMenu.value = false
+    // Navigate to the new tab
+    if (newTab) {
+      router.push({ name: 'tab', params: { tabName: encodeTabName(newTab.name) } })
+    }
+  } catch (error: unknown) {
     console.error('Failed to add tab:', error)
+    // Error is already set in the store, AddTabForm will display it
+    // Don't close the form on error so user can see the error message
+    // The form will stay open to show the error
+    // But close the menu
+    showAddMenu.value = false
   }
 }
 
@@ -159,17 +267,35 @@ async function handleModifyTab(tab: Tab) {
 
 async function handleUpdateTab(id: string, data: UpdateTabDto) {
   try {
-    await tabStore.updateTab(id, data)
+    const updatedTab = await tabStore.updateTab(id, data)
+    // Only close the form if update was successful
     editingTab.value = null
-  } catch (error) {
+    
+    // If the name changed and this is the active tab, navigate to the new URL
+    if (data.name && updatedTab && tabStore.activeTabId === id) {
+      router.replace({ name: 'tab', params: { tabName: encodeTabName(updatedTab.name) } })
+    }
+  } catch (error: unknown) {
     console.error('Failed to update tab:', error)
+    // Error is already set in the store, EditTabForm will display it via props.error
+    // Don't close the form on error so user can see the error message and fix it
   }
 }
 
 async function handleDeleteTab(id: string) {
   try {
+    const wasActive = tabStore.activeTabId === id
     await tabStore.removeTab(id)
     editingTab.value = null
+    
+    // Navigate to the new active tab or home if no tabs left
+    if (wasActive) {
+      if (tabStore.tabs.length > 0 && tabStore.tabs[0]) {
+        router.replace({ name: 'tab', params: { tabName: encodeTabName(tabStore.tabs[0].name) } })
+      } else {
+        router.replace({ name: 'home' })
+      }
+    }
   } catch (error) {
     console.error('Failed to delete tab:', error)
   }
@@ -370,70 +496,103 @@ async function handleUngroupedDrop(event: DragEvent) {
     <div class="flex justify-between items-center mb-8">
       <h1 class="m-0 text-[var(--color-text)]">My Bookmarks</h1>
       <div class="flex gap-4 items-center">
-        <button
-          class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
-          @click="showAddTabForm = true"
-          aria-label="Add new tab"
-          title="Add new tab"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+        <!-- Add Menu Button with Dropdown -->
+        <div class="relative add-menu-container">
+          <button
+            class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
+            :class="{ 'bg-[var(--color-background-mute)] border-[var(--color-border-hover)]': showAddMenu }"
+            @click="showAddMenu = !showAddMenu"
+            aria-label="Add"
+            title="Add"
           >
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <line x1="9" y1="3" x2="9" y2="21" />
-          </svg>
-        </button>
-        <button
-          class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
-          @click="showAddForm = true"
-          aria-label="Add new bookmark"
-          title="Add new bookmark"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="transition-transform duration-200"
+              :class="{ 'rotate-45': showAddMenu }"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+          <!-- Dropdown Menu -->
+          <div
+            v-if="showAddMenu"
+            class="absolute right-0 top-12 mt-2 w-48 bg-[var(--color-background-soft)] border border-[var(--color-border)] rounded-lg shadow-lg z-50 overflow-hidden"
+            @click.stop
           >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
-        <button
-          class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
-          @click="showAddGroupForm = true"
-          aria-label="Add new group"
-          title="Add new group"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <line x1="9" y1="3" x2="9" y2="21" />
-            <line x1="3" y1="9" x2="21" y2="9" />
-          </svg>
-        </button>
+            <button
+              class="w-full px-4 py-3 text-left text-[var(--color-text)] hover:bg-[var(--color-background-mute)] transition-colors duration-150 flex items-center gap-3"
+              @click="showAddForm = true; showAddMenu = false"
+              aria-label="Add new bookmark"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>Add Bookmark</span>
+            </button>
+            <button
+              class="w-full px-4 py-3 text-left text-[var(--color-text)] hover:bg-[var(--color-background-mute)] transition-colors duration-150 flex items-center gap-3"
+              @click="showAddTabForm = true; showAddMenu = false"
+              aria-label="Add new tab"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+              </svg>
+              <span>Add Tab</span>
+            </button>
+            <button
+              class="w-full px-4 py-3 text-left text-[var(--color-text)] hover:bg-[var(--color-background-mute)] transition-colors duration-150 flex items-center gap-3"
+              @click="showAddGroupForm = true; showAddMenu = false"
+              aria-label="Add new group"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+                <line x1="3" y1="9" x2="21" y2="9" />
+              </svg>
+              <span>Add Group</span>
+            </button>
+          </div>
+        </div>
         <button
           class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
           @click="showSettingsModal = true"
@@ -451,15 +610,15 @@ async function handleUngroupedDrop(event: DragEvent) {
             stroke-linecap="round"
             stroke-linejoin="round"
           >
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
             <circle cx="12" cy="12" r="3" />
-            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
           </svg>
         </button>
       </div>
     </div>
 
     <!-- Tab Switcher -->
-    <TabSwitcher v-if="tabStore.tabs.length > 0" @tab-edit="handleModifyTab" @tab-add="showAddTabForm = true" />
+    <TabSwitcher v-if="tabStore.tabs.length > 0" @tab-edit="handleModifyTab" @tab-add="showAddTabForm = true; showAddMenu = false" />
 
     <div
       v-if="(bookmarkStore.loading || groupStore.loading || tabStore.loading) && bookmarkStore.bookmarks.length === 0 && groupStore.groups.length === 0"
@@ -571,7 +730,7 @@ async function handleUngroupedDrop(event: DragEvent) {
       </div>
     </div>
 
-    <AddBookmarkForm v-if="showAddForm" @submit="handleAddBookmark" @cancel="showAddForm = false" />
+    <AddBookmarkForm v-if="showAddForm" @submit="handleAddBookmark" @cancel="showAddForm = false; showAddMenu = false" />
     <EditBookmarkForm
       v-if="editingBookmark"
       :bookmark="editingBookmark"
@@ -579,7 +738,7 @@ async function handleUngroupedDrop(event: DragEvent) {
       @delete="handleDeleteFromEditForm"
       @cancel="editingBookmark = null"
     />
-    <AddGroupForm v-if="showAddGroupForm" @submit="handleAddGroup" @cancel="showAddGroupForm = false" />
+    <AddGroupForm v-if="showAddGroupForm" @submit="handleAddGroup" @cancel="showAddGroupForm = false; showAddMenu = false" />
     <EditGroupForm
       v-if="editingGroup"
       :group="editingGroup"
@@ -587,7 +746,7 @@ async function handleUngroupedDrop(event: DragEvent) {
       @delete="handleDeleteGroup"
       @cancel="editingGroup = null"
     />
-    <AddTabForm v-if="showAddTabForm" @submit="handleAddTab" @cancel="showAddTabForm = false" />
+    <AddTabForm v-if="showAddTabForm" @submit="handleAddTab" @cancel="showAddTabForm = false; showAddMenu = false" />
     <EditTabForm
       v-if="editingTab"
       :tab="editingTab"

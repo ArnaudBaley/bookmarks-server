@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useTabStore } from '@/stores/tab/tab'
 import type { CreateTabDto } from '@/types/tab'
 
 interface Emits {
@@ -8,11 +9,19 @@ interface Emits {
 }
 
 const emit = defineEmits<Emits>()
+const tabStore = useTabStore()
 
 const name = ref('')
 const color = ref('#3b82f6')
 const error = ref<string | null>(null)
 const nameInputRef = ref<HTMLInputElement | null>(null)
+
+// Watch for errors from the store
+watch(() => tabStore.error, (newError) => {
+  if (newError) {
+    error.value = newError
+  }
+})
 
 function handleEscapeKey(event: KeyboardEvent) {
   if (event.key === 'Escape') {
@@ -44,6 +53,7 @@ const colorPalette = [
 
 function handleSubmit() {
   error.value = null
+  tabStore.error = null
 
   if (!name.value.trim()) {
     error.value = 'Name is required'
@@ -55,16 +65,20 @@ function handleSubmit() {
     color: color.value,
   })
 
-  // Reset form
-  name.value = ''
-  color.value = '#3b82f6'
-  error.value = null
+  // Only reset form if no error occurred
+  // If there's an error, keep the form open so user can see it
+  if (!tabStore.error) {
+    name.value = ''
+    color.value = '#3b82f6'
+    error.value = null
+  }
 }
 
 function handleCancel() {
   name.value = ''
   color.value = '#3b82f6'
   error.value = null
+  tabStore.error = null
   emit('cancel')
 }
 </script>
@@ -118,7 +132,7 @@ function handleCancel() {
             </div>
           </div>
         </div>
-        <div v-if="error" class="text-[#dc3545] mb-4 text-sm">{{ error }}</div>
+        <div v-if="error || tabStore.error" class="text-[#dc3545] mb-4 text-sm p-3 bg-[#dc3545]/10 rounded">{{ error || tabStore.error }}</div>
         <div class="flex gap-4 justify-end">
           <button
             type="button"

@@ -8,14 +8,14 @@ import {
 
 @ValidatorConstraint({ async: false })
 export class IsValidUrlConstraint implements ValidatorConstraintInterface {
-  validate(value: any, args: ValidationArguments) {
+  validate(value: unknown) {
     if (typeof value !== 'string') {
       return false;
     }
     try {
       new URL(value);
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
   }
@@ -26,7 +26,7 @@ export class IsValidUrlConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsValidUrl(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -36,4 +36,3 @@ export function IsValidUrl(validationOptions?: ValidationOptions) {
     });
   };
 }
-

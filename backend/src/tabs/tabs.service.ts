@@ -1,6 +1,7 @@
 import {
   Injectable,
   NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -38,27 +39,75 @@ export class TabsService {
     return tab;
   }
 
+  async findByName(name: string): Promise<Tab | null> {
+    return this.tabRepository.findOne({
+      where: { name },
+    });
+  }
+
   async create(createTabDto: CreateTabDto): Promise<Tab> {
+    // Check if a tab with this name already exists
+    const existingTab = await this.findByName(createTabDto.name);
+    if (existingTab) {
+      throw new ConflictException(
+        `Tab with name "${createTabDto.name}" already exists`,
+      );
+    }
+
     const tab = this.tabRepository.create({
       id: uuidv4(),
       name: createTabDto.name,
       color: createTabDto.color || null,
     });
-    return this.tabRepository.save(tab);
+
+    try {
+      return await this.tabRepository.save(tab);
+    } catch (error: unknown) {
+      // Handle database unique constraint violation
+      if (error && typeof error === 'object' && 'code' in error) {
+        const dbError = error as { code: string };
+        if (dbError.code === 'SQLITE_CONSTRAINT_UNIQUE' || dbError.code === '23505') {
+          throw new ConflictException(
+            `Tab with name "${createTabDto.name}" already exists`,
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   async update(id: string, updateTabDto: UpdateTabDto): Promise<Tab> {
     const tab = await this.findOne(id);
 
     if (updateTabDto.name !== undefined) {
+      // Check if another tab with this name already exists
+      const existingTab = await this.findByName(updateTabDto.name);
+      if (existingTab && existingTab.id !== id) {
+        throw new ConflictException(
+          `Tab with name "${updateTabDto.name}" already exists`,
+        );
+      }
       tab.name = updateTabDto.name;
     }
     if (updateTabDto.color !== undefined) {
       tab.color = updateTabDto.color || null;
     }
 
-    await this.tabRepository.save(tab);
-    return this.findOne(id);
+    try {
+      await this.tabRepository.save(tab);
+      return this.findOne(id);
+    } catch (error: unknown) {
+      // Handle database unique constraint violation
+      if (error && typeof error === 'object' && 'code' in error) {
+        const dbError = error as { code: string };
+        if (dbError.code === 'SQLITE_CONSTRAINT_UNIQUE' || dbError.code === '23505') {
+          throw new ConflictException(
+            `Tab with name "${updateTabDto.name}" already exists`,
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   async remove(id: string): Promise<void> {

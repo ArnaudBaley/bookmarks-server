@@ -10,8 +10,6 @@ import { UpdateBookmarkDto } from './dto/update-bookmark.dto';
 
 describe('BookmarksService', () => {
   let service: BookmarksService;
-  let bookmarkRepository: Repository<Bookmark>;
-  let groupRepository: Repository<Group>;
 
   const mockBookmarkRepository = {
     find: jest.fn(),
@@ -154,7 +152,7 @@ describe('BookmarksService', () => {
 
       expect(result).toEqual(mockCreatedBookmark);
       expect(mockBookmarkRepository.create).toHaveBeenCalledWith({
-        id: expect.any(String),
+        id: expect.any(String) as string,
         name: createDto.name,
         url: createDto.url,
         tabId: createDto.tabId,
@@ -220,7 +218,7 @@ describe('BookmarksService', () => {
 
       expect(result).toEqual(mockCreatedBookmark);
       expect(mockBookmarkRepository.create).toHaveBeenCalledWith({
-        id: expect.any(String),
+        id: expect.any(String) as string,
         name: createDto.name,
         url: createDto.url,
         tabId: null,
@@ -355,4 +353,3 @@ describe('BookmarksService', () => {
     });
   });
 });
-

@@ -20,6 +20,10 @@ export const useTabStore = defineStore('tab', () => {
     return (id: string) => tabs.value.find((tab) => tab.id === id)
   })
 
+  const getTabByName = computed(() => {
+    return (name: string) => tabs.value.find((tab) => tab.name === name)
+  })
+
   async function fetchTabs() {
     loading.value = true
     error.value = null
@@ -127,6 +131,7 @@ export const useTabStore = defineStore('tab', () => {
     tabsCount,
     activeTab,
     getTabById,
+    getTabByName,
     fetchTabs,
     addTab,
     updateTab,

@@ -10,8 +10,6 @@ import { UpdateGroupDto } from './dto/update-group.dto';
 
 describe('GroupsService', () => {
   let service: GroupsService;
-  let groupRepository: Repository<Group>;
-  let bookmarkRepository: Repository<Bookmark>;
 
   const mockGroupRepository = {
     find: jest.fn(),
@@ -151,7 +149,7 @@ describe('GroupsService', () => {
 
       expect(result).toEqual(mockCreatedGroup);
       expect(mockGroupRepository.create).toHaveBeenCalledWith({
-        id: expect.any(String),
+        id: expect.any(String) as string,
         name: createDto.name,
         color: createDto.color,
         tabId: createDto.tabId,
@@ -178,7 +176,7 @@ describe('GroupsService', () => {
 
       expect(result).toEqual(mockCreatedGroup);
       expect(mockGroupRepository.create).toHaveBeenCalledWith({
-        id: expect.any(String),
+        id: expect.any(String) as string,
         name: createDto.name,
         color: createDto.color,
         tabId: null,
@@ -396,4 +394,3 @@ describe('GroupsService', () => {
     });
   });
 });
-

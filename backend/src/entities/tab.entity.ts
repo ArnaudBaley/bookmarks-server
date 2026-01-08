@@ -11,7 +11,7 @@ export class Tab {
   @PrimaryColumn('varchar', { length: 36 })
   id: string;
 
-  @Column('varchar', { length: 255 })
+  @Column('varchar', { length: 255, unique: true })
   name: string;
 
   @Column('varchar', { length: 50, nullable: true })

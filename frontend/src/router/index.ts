@@ -9,6 +9,12 @@ const router = createRouter({
       name: 'home',
       component: HomeView,
     },
+    {
+      path: '/tab/:tabName',
+      name: 'tab',
+      component: HomeView,
+      props: true,
+    },
   ],
 })
 

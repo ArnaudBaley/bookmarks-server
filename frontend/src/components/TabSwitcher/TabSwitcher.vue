@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useTabStore } from '@/stores/tab/tab'
 import type { Tab } from '@/types/tab'
 
@@ -10,13 +11,19 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
+const router = useRouter()
 const tabStore = useTabStore()
 
 const tabs = computed(() => tabStore.tabs)
 const activeTabId = computed(() => tabStore.activeTabId)
 
 function handleTabClick(tabId: string) {
-  tabStore.setActiveTab(tabId)
+  const tab = tabStore.getTabById(tabId)
+  if (tab) {
+    // Encode tab name for URL (handles spaces and special characters)
+    const encodedName = encodeURIComponent(tab.name)
+    router.push({ name: 'tab', params: { tabName: encodedName } })
+  }
 }
 
 function handleTabEdit(event: MouseEvent, tab: Tab) {

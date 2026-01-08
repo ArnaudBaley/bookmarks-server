@@ -47,7 +47,17 @@ export class HttpTabApi implements ITabApi {
         body: JSON.stringify(data),
       })
       if (!response.ok) {
-        throw new Error(`Failed to create tab: ${response.statusText}`)
+        // Try to extract error message from response body
+        let errorMessage = `Failed to create tab: ${response.statusText}`
+        try {
+          const errorData = await response.json()
+          if (errorData?.message) {
+            errorMessage = errorData.message
+          }
+        } catch {
+          // If response is not JSON, use statusText
+        }
+        throw new Error(errorMessage)
       }
       return await response.json()
     } catch (error) {
@@ -66,7 +76,17 @@ export class HttpTabApi implements ITabApi {
         body: JSON.stringify(data),
       })
       if (!response.ok) {
-        throw new Error(`Failed to update tab: ${response.statusText}`)
+        // Try to extract error message from response body
+        let errorMessage = `Failed to update tab: ${response.statusText}`
+        try {
+          const errorData = await response.json()
+          if (errorData?.message) {
+            errorMessage = errorData.message
+          }
+        } catch {
+          // If response is not JSON, use statusText
+        }
+        throw new Error(errorMessage)
       }
       return await response.json()
     } catch (error) {

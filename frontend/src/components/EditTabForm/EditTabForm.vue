@@ -69,6 +69,9 @@ function handleSubmit() {
     name: name.value.trim(),
     color: color.value,
   })
+  
+  // Note: If there's an error from the API, it will be set in the store
+  // and displayed via props.error. The form will stay open.
 }
 
 function handleDelete() {
