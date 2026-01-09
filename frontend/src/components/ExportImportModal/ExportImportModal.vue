@@ -24,10 +24,13 @@ const error = ref<string | null>(null)
 const isImporting = ref(false)
 const showConfirmation = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const importType = ref<'json' | 'html'>('json')
+const isHtmlImport = ref(false)
 const importData = ref<{ 
   bookmarks: Array<Omit<CreateBookmarkDto, 'tabId'> & { groupIndices?: number[]; tabIndex?: number }>; 
   groups: Array<Omit<CreateGroupDto, 'tabId'> & { tabIndex?: number }>
   tabs: CreateTabDto[]
+  tabName?: string
 } | null>(null)
 
 interface ExportData {
@@ -66,6 +69,8 @@ function handleCancel() {
   error.value = null
   showConfirmation.value = false
   importData.value = null
+  isHtmlImport.value = false
+  importType.value = 'json'
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
   }
@@ -291,6 +296,91 @@ function validateImportData(data: unknown): {
   return { bookmarks, groups, tabs }
 }
 
+interface ParsedHtmlBookmark {
+  name: string
+  url: string
+  folderName?: string
+}
+
+interface ParsedHtmlFolder {
+  name: string
+  bookmarks: ParsedHtmlBookmark[]
+}
+
+function parseHtmlBookmarks(htmlText: string): { folders: ParsedHtmlFolder[], bookmarks: ParsedHtmlBookmark[] } {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(htmlText, 'text/html')
+  
+  const folders: ParsedHtmlFolder[] = []
+  const bookmarks: ParsedHtmlBookmark[] = []
+  const folderMap = new Map<string, ParsedHtmlFolder>()
+
+  function processDl(dlElement: Element, currentFolder?: string) {
+    if (!dlElement) return
+
+    const children = Array.from(dlElement.children)
+    
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]
+      if (!child) continue
+      
+      if (child.tagName === 'DT') {
+        const h3 = child.querySelector('H3')
+        const a = child.querySelector('A')
+        
+        if (h3) {
+          // This is a folder
+          const folderName = h3.textContent?.trim() || 'Unnamed Folder'
+          const nestedDl = child.querySelector('DL')
+          
+          if (!folderMap.has(folderName)) {
+            const folder: ParsedHtmlFolder = {
+              name: folderName,
+              bookmarks: []
+            }
+            folderMap.set(folderName, folder)
+            folders.push(folder)
+          }
+          
+          // Process nested content
+          if (nestedDl) {
+            processDl(nestedDl, folderName)
+          }
+        } else if (a && a.getAttribute('HREF')) {
+          // This is a bookmark
+          const href = a.getAttribute('HREF')
+          const title = a.textContent?.trim() || href || 'Unnamed Bookmark'
+          
+          if (href) {
+            const bookmark: ParsedHtmlBookmark = {
+              name: title,
+              url: href,
+              folderName: currentFolder
+            }
+            
+            if (currentFolder) {
+              const folder = folderMap.get(currentFolder)
+              if (folder) {
+                folder.bookmarks.push(bookmark)
+              }
+            } else {
+              bookmarks.push(bookmark)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Find the main DL element (usually the root)
+  const mainDl = doc.querySelector('DL')
+  if (mainDl) {
+    processDl(mainDl)
+  }
+
+  return { folders, bookmarks }
+}
+
 function handleFileSelect(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -302,6 +392,10 @@ function handleFileSelect(event: Event) {
   error.value = null
   isImporting.value = true
 
+  // Detect file type from extension or content
+  const fileName = file.name.toLowerCase()
+  const isHtml = importType.value === 'html' || fileName.endsWith('.html') || fileName.endsWith('.htm')
+
   const reader = new FileReader()
   
   reader.onload = (e) => {
@@ -311,14 +405,74 @@ function handleFileSelect(event: Event) {
         throw new Error('File is empty')
       }
 
-      const jsonData = JSON.parse(text)
-      const validatedData = validateImportData(jsonData)
-      
-      if (!validatedData) {
-        throw new Error('Validation failed')
+      if (isHtml) {
+        // Parse HTML bookmarks
+        const { folders, bookmarks } = parseHtmlBookmarks(text)
+        
+        // Extract filename without extension for tab name
+        const fileNameWithoutExt = file.name.replace(/\.(html?|htm)$/i, '') || 'Imported Bookmarks'
+        
+        // Convert to import data format
+        const groups: Array<Omit<CreateGroupDto, 'tabId'> & { tabIndex?: number }> = folders.map((folder) => ({
+          name: folder.name,
+          color: '#3b82f6', // Default blue color
+          tabIndex: 0, // Will be assigned to the new tab
+        }))
+
+        // Create a map of folder names to indices
+        const folderNameToIndex = new Map<string, number>()
+        folders.forEach((folder, index) => {
+          folderNameToIndex.set(folder.name, index)
+        })
+
+        const importedBookmarks: Array<Omit<CreateBookmarkDto, 'tabId'> & { groupIndices?: number[]; tabIndex?: number }> = []
+        
+        // Add bookmarks from folders
+        folders.forEach((folder) => {
+          const groupIndex = folderNameToIndex.get(folder.name)
+          if (groupIndex !== undefined) {
+            folder.bookmarks.forEach((bookmark) => {
+              importedBookmarks.push({
+                name: bookmark.name,
+                url: bookmark.url,
+                groupIndices: [groupIndex],
+                tabIndex: 0,
+              })
+            })
+          }
+        })
+
+        // Add bookmarks without folders (they will appear in "Ungrouped" section)
+        // These bookmarks have no groupIndices, so they won't be assigned to any group
+        bookmarks.forEach((bookmark) => {
+          importedBookmarks.push({
+            name: bookmark.name,
+            url: bookmark.url,
+            tabIndex: 0,
+            // No groupIndices - these will appear in the "Ungrouped" section
+          })
+        })
+
+        importData.value = {
+          tabs: [{ name: fileNameWithoutExt }],
+          groups,
+          bookmarks: importedBookmarks,
+          tabName: fileNameWithoutExt,
+        }
+        isHtmlImport.value = true
+      } else {
+        // Parse JSON
+        const jsonData = JSON.parse(text)
+        const validatedData = validateImportData(jsonData)
+        
+        if (!validatedData) {
+          throw new Error('Validation failed')
+        }
+
+        importData.value = validatedData
+        isHtmlImport.value = false
       }
 
-      importData.value = validatedData
       showConfirmation.value = true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to parse or validate file'
@@ -345,159 +499,236 @@ async function handleImportConfirm() {
     error.value = null
     isImporting.value = true
 
-    // Delete all existing bookmarks
-    const bookmarkIds = [...bookmarkStore.bookmarks.map((b) => b.id)]
-    for (const id of bookmarkIds) {
-      try {
-        await bookmarkStore.removeBookmark(id)
-      } catch (err) {
-        console.error(`Failed to delete bookmark ${id}:`, err)
-      }
+    if (isHtmlImport.value) {
+      // HTML import: Add to existing data (create new tab)
+      await handleHtmlImport()
+    } else {
+      // JSON import: Replace all existing data
+      await handleJsonImport()
     }
-
-    // Delete all existing groups
-    const groupIds = [...groupStore.groups.map((g) => g.id)]
-    for (const id of groupIds) {
-      try {
-        await groupStore.removeGroup(id)
-      } catch (err) {
-        console.error(`Failed to delete group ${id}:`, err)
-      }
-    }
-
-    // Delete all existing tabs
-    const tabIds = [...tabStore.tabs.map((t) => t.id)]
-    for (const id of tabIds) {
-      try {
-        await tabStore.removeTab(id)
-      } catch (err) {
-        console.error(`Failed to delete tab ${id}:`, err)
-      }
-    }
-
-    // Refresh tabs to check if any remain (e.g., from backend migration)
-    await tabStore.fetchTabs()
-
-    // Create new tabs first (groups and bookmarks need tab IDs)
-    // Store mapping from index to new tab ID
-    const tabIndexToId = new Map<number, string>()
-    for (let i = 0; i < importData.value.tabs.length; i++) {
-      const tabData = importData.value.tabs[i]
-      if (!tabData) {
-        continue
-      }
-      try {
-        const newTab = await tabStore.addTab(tabData)
-        tabIndexToId.set(i, newTab.id)
-      } catch (err) {
-        console.error(`Failed to create tab ${tabData.name}:`, err)
-      }
-    }
-
-    // If no tabs were imported and no tabs exist, create a default tab for backward compatibility
-    // Check both importData and actual tabs to avoid creating duplicate default tabs
-    if (importData.value.tabs.length === 0 && tabStore.tabs.length === 0) {
-      try {
-        const defaultTab = await tabStore.addTab({ name: 'Default' })
-        tabIndexToId.set(0, defaultTab.id)
-      } catch (err) {
-        console.error('Failed to create default tab:', err)
-      }
-    } else if (importData.value.tabs.length === 0 && tabStore.tabs.length > 0) {
-      // If no tabs were imported but tabs exist (e.g., from migration), use the first existing tab
-      const existingTab = tabStore.tabs[0]
-      if (existingTab) {
-        tabIndexToId.set(0, existingTab.id)
-      }
-    }
-
-    // Create new groups (bookmarks need group IDs)
-    // Store mapping from index to new group ID
-    const groupIndexToId = new Map<number, string>()
-    for (let i = 0; i < importData.value.groups.length; i++) {
-      const groupData = importData.value.groups[i]
-      if (!groupData) {
-        continue
-      }
-      try {
-        // Map tab index to new tab ID, or use default tab (index 0) if no tabIndex
-        let tabId: string | undefined
-        if (groupData.tabIndex !== undefined) {
-          tabId = tabIndexToId.get(groupData.tabIndex)
-        } else {
-          // Backward compatibility: use default tab (index 0)
-          tabId = tabIndexToId.get(0)
-        }
-        
-        if (!tabId) {
-          console.error(`Group ${groupData.name} has invalid tabIndex ${groupData.tabIndex}`)
-          continue
-        }
-
-        const newGroup = await groupStore.addGroup({
-          name: groupData.name,
-          color: groupData.color,
-          tabId,
-        })
-        groupIndexToId.set(i, newGroup.id)
-      } catch (err) {
-        console.error(`Failed to create group ${groupData.name}:`, err)
-      }
-    }
-
-    // Create new bookmarks with updated group IDs and tab IDs
-    for (const bookmarkData of importData.value.bookmarks) {
-      try {
-        // Map tab index to new tab ID, or use default tab (index 0) if no tabIndex
-        let tabId: string | undefined
-        if (bookmarkData.tabIndex !== undefined) {
-          tabId = tabIndexToId.get(bookmarkData.tabIndex)
-        } else {
-          // Backward compatibility: use default tab (index 0)
-          tabId = tabIndexToId.get(0)
-        }
-
-        if (!tabId) {
-          console.error(`Bookmark ${bookmarkData.name} has invalid tabIndex ${bookmarkData.tabIndex}`)
-          continue
-        }
-
-        // Map group indices to new group IDs
-        const mappedGroupIds: string[] = []
-        
-        if (bookmarkData.groupIndices && bookmarkData.groupIndices.length > 0) {
-          for (const index of bookmarkData.groupIndices) {
-            const newGroupId = groupIndexToId.get(index)
-            if (newGroupId) {
-              mappedGroupIds.push(newGroupId)
-            }
-          }
-        }
-
-        await bookmarkStore.addBookmark({
-          name: bookmarkData.name,
-          url: bookmarkData.url,
-          tabId,
-          groupIds: mappedGroupIds,
-        })
-      } catch (err) {
-        console.error(`Failed to create bookmark ${bookmarkData.name}:`, err)
-      }
-    }
-
-    // Refresh data
-    await tabStore.fetchTabs()
-    await bookmarkStore.fetchBookmarks()
-    await groupStore.fetchGroups()
-
-    // Close modal on success
-    handleCancel()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to import data'
     console.error('Import error:', err)
   } finally {
     isImporting.value = false
   }
+}
+
+async function handleHtmlImport() {
+  if (!importData.value) {
+    return
+  }
+
+  // Create new tab with filename as name
+  const tabName = importData.value.tabName || 'Imported Bookmarks'
+  const newTab = await tabStore.addTab({ name: tabName })
+  const newTabId = newTab.id
+
+  // Create groups in the new tab
+  const groupIndexToId = new Map<number, string>()
+  for (let i = 0; i < importData.value.groups.length; i++) {
+    const groupData = importData.value.groups[i]
+    if (!groupData) {
+      continue
+    }
+    try {
+      const newGroup = await groupStore.addGroup({
+        name: groupData.name,
+        color: groupData.color || '#3b82f6',
+        tabId: newTabId,
+      })
+      groupIndexToId.set(i, newGroup.id)
+    } catch (err) {
+      console.error(`Failed to create group ${groupData.name}:`, err)
+    }
+  }
+
+  // Create bookmarks in the new tab
+  for (const bookmarkData of importData.value.bookmarks) {
+    try {
+      const mappedGroupIds: string[] = []
+      
+      if (bookmarkData.groupIndices && bookmarkData.groupIndices.length > 0) {
+        for (const index of bookmarkData.groupIndices) {
+          const groupId = groupIndexToId.get(index)
+          if (groupId) {
+            mappedGroupIds.push(groupId)
+          }
+        }
+      }
+
+      await bookmarkStore.addBookmark({
+        name: bookmarkData.name,
+        url: bookmarkData.url,
+        tabId: newTabId,
+        groupIds: mappedGroupIds,
+      })
+    } catch (err) {
+      console.error(`Failed to create bookmark ${bookmarkData.name}:`, err)
+    }
+  }
+
+  // Refresh data
+  await tabStore.fetchTabs()
+  await bookmarkStore.fetchBookmarks()
+  await groupStore.fetchGroups()
+
+  // Close modal on success
+  handleCancel()
+}
+
+async function handleJsonImport() {
+  if (!importData.value) {
+    return
+  }
+
+  // Delete all existing bookmarks
+  const bookmarkIds = [...bookmarkStore.bookmarks.map((b) => b.id)]
+  for (const id of bookmarkIds) {
+    try {
+      await bookmarkStore.removeBookmark(id)
+    } catch (err) {
+      console.error(`Failed to delete bookmark ${id}:`, err)
+    }
+  }
+
+  // Delete all existing groups
+  const groupIds = [...groupStore.groups.map((g) => g.id)]
+  for (const id of groupIds) {
+    try {
+      await groupStore.removeGroup(id)
+    } catch (err) {
+      console.error(`Failed to delete group ${id}:`, err)
+    }
+  }
+
+  // Delete all existing tabs
+  const tabIds = [...tabStore.tabs.map((t) => t.id)]
+  for (const id of tabIds) {
+    try {
+      await tabStore.removeTab(id)
+    } catch (err) {
+      console.error(`Failed to delete tab ${id}:`, err)
+    }
+  }
+
+  // Refresh tabs to check if any remain (e.g., from backend migration)
+  await tabStore.fetchTabs()
+
+  // Create new tabs first (groups and bookmarks need tab IDs)
+  // Store mapping from index to new tab ID
+  const jsonTabIndexToId = new Map<number, string>()
+  for (let i = 0; i < importData.value.tabs.length; i++) {
+    const tabData = importData.value.tabs[i]
+    if (!tabData) {
+      continue
+    }
+    try {
+      const newTab = await tabStore.addTab(tabData)
+      jsonTabIndexToId.set(i, newTab.id)
+    } catch (err) {
+      console.error(`Failed to create tab ${tabData.name}:`, err)
+    }
+  }
+
+  // If no tabs were imported and no tabs exist, create a default tab for backward compatibility
+  // Check both importData and actual tabs to avoid creating duplicate default tabs
+  if (importData.value.tabs.length === 0 && tabStore.tabs.length === 0) {
+    try {
+      const defaultTab = await tabStore.addTab({ name: 'Default' })
+      jsonTabIndexToId.set(0, defaultTab.id)
+    } catch (err) {
+      console.error('Failed to create default tab:', err)
+    }
+  } else if (importData.value.tabs.length === 0 && tabStore.tabs.length > 0) {
+    // If no tabs were imported but tabs exist (e.g., from migration), use the first existing tab
+    const existingTab = tabStore.tabs[0]
+    if (existingTab) {
+      jsonTabIndexToId.set(0, existingTab.id)
+    }
+  }
+
+  // Create new groups (bookmarks need group IDs)
+  // Store mapping from index to new group ID
+  const jsonGroupIndexToId = new Map<number, string>()
+  for (let i = 0; i < importData.value.groups.length; i++) {
+    const groupData = importData.value.groups[i]
+    if (!groupData) {
+      continue
+    }
+    try {
+      // Map tab index to new tab ID, or use default tab (index 0) if no tabIndex
+      let tabId: string | undefined
+      if (groupData.tabIndex !== undefined) {
+        tabId = jsonTabIndexToId.get(groupData.tabIndex)
+      } else {
+        // Backward compatibility: use default tab (index 0)
+        tabId = jsonTabIndexToId.get(0)
+      }
+      
+      if (!tabId) {
+        console.error(`Group ${groupData.name} has invalid tabIndex ${groupData.tabIndex}`)
+        continue
+      }
+
+      const newGroup = await groupStore.addGroup({
+        name: groupData.name,
+        color: groupData.color,
+        tabId,
+      })
+      jsonGroupIndexToId.set(i, newGroup.id)
+    } catch (err) {
+      console.error(`Failed to create group ${groupData.name}:`, err)
+    }
+  }
+
+  // Create new bookmarks with updated group IDs and tab IDs
+  for (const bookmarkData of importData.value.bookmarks) {
+    try {
+      // Map tab index to new tab ID, or use default tab (index 0) if no tabIndex
+      let tabId: string | undefined
+      if (bookmarkData.tabIndex !== undefined) {
+        tabId = jsonTabIndexToId.get(bookmarkData.tabIndex)
+      } else {
+        // Backward compatibility: use default tab (index 0)
+        tabId = jsonTabIndexToId.get(0)
+      }
+
+      if (!tabId) {
+        console.error(`Bookmark ${bookmarkData.name} has invalid tabIndex ${bookmarkData.tabIndex}`)
+        continue
+      }
+
+      // Map group indices to new group IDs
+      const mappedGroupIds: string[] = []
+      
+      if (bookmarkData.groupIndices && bookmarkData.groupIndices.length > 0) {
+        for (const index of bookmarkData.groupIndices) {
+          const newGroupId = jsonGroupIndexToId.get(index)
+          if (newGroupId) {
+            mappedGroupIds.push(newGroupId)
+          }
+        }
+      }
+
+      await bookmarkStore.addBookmark({
+        name: bookmarkData.name,
+        url: bookmarkData.url,
+        tabId,
+        groupIds: mappedGroupIds,
+      })
+    } catch (err) {
+      console.error(`Failed to create bookmark ${bookmarkData.name}:`, err)
+    }
+  }
+
+  // Refresh data
+  await tabStore.fetchTabs()
+  await bookmarkStore.fetchBookmarks()
+  await groupStore.fetchGroups()
+
+  // Close modal on success
+  handleCancel()
 }
 
 function handleImportCancel() {
@@ -526,16 +757,20 @@ function triggerFileInput() {
       <div v-if="showConfirmation" class="space-y-6">
         <h2 class="m-0 text-[var(--color-text)]">Confirm Import</h2>
         <div class="text-[var(--color-text)]">
-          <p class="mb-4">
+          <p class="mb-4" v-if="isHtmlImport">
+            This will create a new tab named "{{ importData?.tabName || 'Imported Bookmarks' }}" and add the imported bookmarks and groups to it. Existing data will be preserved.
+          </p>
+          <p class="mb-4" v-else>
             This will replace all existing tabs, bookmarks and groups with the imported data.
           </p>
           <p class="mb-2 font-semibold">Import Summary:</p>
           <ul class="list-disc list-inside space-y-1 text-sm">
-            <li>{{ importData?.tabs.length || 0 }} tab(s)</li>
+            <li v-if="isHtmlImport">1 new tab: "{{ importData?.tabName || 'Imported Bookmarks' }}"</li>
+            <li v-else>{{ importData?.tabs.length || 0 }} tab(s)</li>
             <li>{{ importData?.bookmarks.length || 0 }} bookmark(s)</li>
             <li>{{ importData?.groups.length || 0 }} group(s)</li>
           </ul>
-          <p class="mt-4 text-[#dc3545] font-semibold">
+          <p class="mt-4 text-[#dc3545] font-semibold" v-if="!isHtmlImport">
             This action cannot be undone. Are you sure you want to continue?
           </p>
         </div>
@@ -610,13 +845,42 @@ function triggerFileInput() {
           <!-- Import Section -->
           <div class="p-6 border border-[var(--color-border)] rounded-lg">
             <h3 class="m-0 mb-3 text-lg text-[var(--color-text)]">Import Data</h3>
-            <p class="m-0 mb-4 text-sm text-[var(--color-text)] opacity-70">
+            
+            <!-- Import Type Selection -->
+            <div class="mb-4">
+              <label class="block mb-2 text-sm font-medium text-[var(--color-text)]">Import Type:</label>
+              <div class="flex gap-4">
+                <label class="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    value="json"
+                    v-model="importType"
+                    class="mr-2 cursor-pointer"
+                  />
+                  <span class="text-sm text-[var(--color-text)]">JSON</span>
+                </label>
+                <label class="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    value="html"
+                    v-model="importType"
+                    class="mr-2 cursor-pointer"
+                  />
+                  <span class="text-sm text-[var(--color-text)]">HTML (Browser Bookmarks)</span>
+                </label>
+              </div>
+            </div>
+
+            <p class="m-0 mb-4 text-sm text-[var(--color-text)] opacity-70" v-if="importType === 'json'">
               Import tabs, bookmarks and groups from a JSON file. This will replace all existing data.
+            </p>
+            <p class="m-0 mb-4 text-sm text-[var(--color-text)] opacity-70" v-else>
+              Import bookmarks from a browser-exported HTML file. This will create a new tab with the imported bookmarks and groups. Existing data will be preserved.
             </p>
             <input
               ref="fileInputRef"
               type="file"
-              accept=".json,application/json"
+              :accept="importType === 'json' ? '.json,application/json' : '.html,.htm,text/html'"
               class="hidden"
               @change="handleFileSelect"
             />
@@ -626,7 +890,7 @@ function triggerFileInput() {
               @click="triggerFileInput"
               :disabled="isImporting"
             >
-              {{ isImporting ? 'Processing...' : 'Select JSON File' }}
+              {{ isImporting ? 'Processing...' : importType === 'json' ? 'Select JSON File' : 'Select HTML File' }}
             </button>
           </div>
         </div>

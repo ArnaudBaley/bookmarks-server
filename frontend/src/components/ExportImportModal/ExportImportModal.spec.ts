@@ -3,6 +3,8 @@ import { mount } from '@vue/test-utils'
 import { createTestPinia } from '@/test-utils'
 import ExportImportModal from './ExportImportModal.vue'
 import { useTabStore } from '@/stores/tab/tab'
+import { useGroupStore } from '@/stores/group/group'
+import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { createBookmark, createBookmarkArray, createGroup, createGroupArray } from '@/test-utils'
 
 /**
@@ -544,6 +546,240 @@ describe('ExportImportModal', () => {
 
         // Should hide confirmation dialog
         expect(wrapper.text()).not.toContain('Confirm Import')
+      }
+    })
+  })
+
+  describe('HTML Import functionality', () => {
+    it('shows HTML import option in UI', () => {
+      const pinia = createTestPinia()
+      const wrapper = mount(ExportImportModal, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      expect(wrapper.text()).toContain('HTML (Browser Bookmarks)')
+      const htmlRadio = wrapper.find('input[value="html"]')
+      expect(htmlRadio.exists()).toBe(true)
+    })
+
+    it('parses HTML bookmarks file correctly', async () => {
+      const pinia = createTestPinia()
+      const wrapper = mount(ExportImportModal, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      const htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<DL>
+  <DT><H3>Folder 1</H3>
+  <DL>
+    <DT><A HREF="https://example.com">Example Bookmark</A>
+    <DT><H3>Nested Folder</H3>
+    <DL>
+      <DT><A HREF="https://example2.com">Another Bookmark</A>
+    </DL>
+  </DL>
+  <DT><A HREF="https://example3.com">Ungrouped Bookmark</A>
+</DL>`
+
+      // Create a mock FileReader that captures callbacks
+      const callbacks = {
+        onload: null as ((e: { target: { result: string } }) => void) | null,
+        onerror: null as (() => void) | null,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        readAsTextImpl: (_file: File) => {
+          // Simulate success by calling onload callback
+          setTimeout(() => {
+            if (callbacks.onload) {
+              callbacks.onload({ target: { result: htmlContent } })
+            }
+          }, 0)
+        },
+        result: htmlContent,
+      }
+
+      // Mock FileReader constructor
+      const MockFileReader = createMockFileReaderClass(callbacks)
+      global.FileReader = MockFileReader
+
+      // Select HTML import type
+      const htmlRadio = wrapper.find('input[value="html"]')
+      await htmlRadio.setValue(true)
+      await wrapper.vm.$nextTick()
+
+      const fileInput = wrapper.find('input[type="file"]')
+      const file = new File([htmlContent], 'bookmarks.html', { type: 'text/html' })
+
+      // Use direct DOM manipulation instead of setValue()
+      const inputElement = fileInput.element as HTMLInputElement
+      if (inputElement) {
+        simulateFileInput(inputElement, file)
+
+        // Wait for async operations
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 50))
+        await wrapper.vm.$nextTick()
+
+        // Should show confirmation dialog
+        expect(wrapper.text()).toContain('Confirm Import')
+        expect(wrapper.text()).toContain('1 new tab')
+        expect(wrapper.text()).toContain('bookmarks')
+        // Should show that it's adding, not replacing
+        expect(wrapper.text()).toContain('Existing data will be preserved')
+        
+        // Check that ungrouped bookmarks have no groupIndices (they'll appear in "Ungrouped" section)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const vm = wrapper.vm as any
+        const importData = vm.importData
+        expect(importData).toBeDefined()
+        expect(importData.groups).toBeDefined()
+        // Should have groups for folders: "Folder 1" and "Nested Folder"
+        expect(importData.groups.length).toBeGreaterThanOrEqual(2)
+        // Should NOT have an "Ungrouped" group (ungrouped is a UI section, not a group)
+        const ungroupedGroup = importData.groups.find((g: { name: string }) => g.name === 'Ungrouped')
+        expect(ungroupedGroup).toBeUndefined()
+        // Should have 1 ungrouped bookmark (with no groupIndices)
+        const ungroupedBookmarks = importData.bookmarks.filter((b: { groupIndices?: number[] }) => {
+          return !b.groupIndices || b.groupIndices.length === 0
+        })
+        expect(ungroupedBookmarks.length).toBeGreaterThanOrEqual(1)
+      }
+    })
+
+    it('shows correct file input accept attribute for HTML', async () => {
+      const pinia = createTestPinia()
+      const wrapper = mount(ExportImportModal, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      // Select HTML import type
+      const htmlRadio = wrapper.find('input[value="html"]')
+      await htmlRadio.setValue(true)
+      await wrapper.vm.$nextTick()
+
+      const fileInput = wrapper.find('input[type="file"]')
+      expect(fileInput.attributes('accept')).toBe('.html,.htm,text/html')
+    })
+
+    it('shows correct file input accept attribute for JSON', async () => {
+      const pinia = createTestPinia()
+      const wrapper = mount(ExportImportModal, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      // Select JSON import type (default)
+      const jsonRadio = wrapper.find('input[value="json"]')
+      await jsonRadio.setValue(true)
+      await wrapper.vm.$nextTick()
+
+      const fileInput = wrapper.find('input[type="file"]')
+      expect(fileInput.attributes('accept')).toBe('.json,application/json')
+    })
+
+    it('creates new tab with filename for HTML import', async () => {
+      const pinia = createTestPinia()
+      const tabStore = useTabStore()
+      const groupStore = useGroupStore()
+      const bookmarkStore = useBookmarkStore()
+
+      const wrapper = mount(ExportImportModal, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      const htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<DL>
+  <DT><H3>My Folder</H3>
+  <DL>
+    <DT><A HREF="https://example.com">Test Bookmark</A>
+  </DL>
+</DL>`
+
+      // Create a mock FileReader that captures callbacks
+      const callbacks = {
+        onload: null as ((e: { target: { result: string } }) => void) | null,
+        onerror: null as (() => void) | null,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        readAsTextImpl: (_file: File) => {
+          setTimeout(() => {
+            if (callbacks.onload) {
+              callbacks.onload({ target: { result: htmlContent } })
+            }
+          }, 0)
+        },
+        result: htmlContent,
+      }
+
+      const MockFileReader = createMockFileReaderClass(callbacks)
+      global.FileReader = MockFileReader
+
+      // Select HTML import type
+      const htmlRadio = wrapper.find('input[value="html"]')
+      await htmlRadio.setValue(true)
+      await wrapper.vm.$nextTick()
+
+      const fileInput = wrapper.find('input[type="file"]')
+      const file = new File([htmlContent], 'my-bookmarks.html', { type: 'text/html' })
+
+      const inputElement = fileInput.element as HTMLInputElement
+      if (inputElement) {
+        simulateFileInput(inputElement, file)
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 50))
+        await wrapper.vm.$nextTick()
+
+        // Confirm import
+        const confirmButton = wrapper.findAll('button').find((btn) => btn.text().includes('Confirm Import'))
+        expect(confirmButton).toBeDefined()
+        
+        // Mock the store methods
+        const addTabSpy = vi.spyOn(tabStore, 'addTab').mockResolvedValue({
+          id: 'new-tab-id',
+          name: 'my-bookmarks',
+          color: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        const addGroupSpy = vi.spyOn(groupStore, 'addGroup').mockResolvedValue({
+          id: 'new-group-id',
+          name: 'My Folder',
+          color: '#3b82f6',
+          tabId: 'new-tab-id',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        const addBookmarkSpy = vi.spyOn(bookmarkStore, 'addBookmark').mockResolvedValue({
+          id: 'new-bookmark-id',
+          name: 'Test Bookmark',
+          url: 'https://example.com',
+          tabId: 'new-tab-id',
+          groupIds: ['new-group-id'],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        vi.spyOn(tabStore, 'fetchTabs').mockResolvedValue(undefined)
+        vi.spyOn(bookmarkStore, 'fetchBookmarks').mockResolvedValue(undefined)
+        vi.spyOn(groupStore, 'fetchGroups').mockResolvedValue(undefined)
+
+        await confirmButton!.trigger('click')
+
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        await wrapper.vm.$nextTick()
+
+        // Verify tab was created with filename (without extension)
+        expect(addTabSpy).toHaveBeenCalledWith({ name: 'my-bookmarks' })
+        expect(addGroupSpy).toHaveBeenCalled()
+        expect(addBookmarkSpy).toHaveBeenCalled()
       }
     })
   })
