@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { useGroupStore } from '@/stores/group/group'
 import { useTabStore } from '@/stores/tab/tab'
+import { groupApi } from '@/services/groupApi/groupApi'
+import { bookmarkApi } from '@/services/bookmarkApi/bookmarkApi'
 import BookmarkCard from '@/components/BookmarkCard/BookmarkCard.vue'
 import GroupCard from '@/components/GroupCard/GroupCard.vue'
 import AddBookmarkForm from '@/components/AddBookmarkForm/AddBookmarkForm.vue'
@@ -183,6 +185,21 @@ async function handleDeleteFromEditForm(id: string) {
   }
 }
 
+async function handleDuplicateBookmark(bookmark: Bookmark) {
+  try {
+    const createData: CreateBookmarkDto = {
+      name: `${bookmark.name} copy`,
+      url: bookmark.url,
+      tabIds: bookmark.tabIds || (bookmark.tabId ? [bookmark.tabId] : []),
+      groupIds: bookmark.groupIds || [],
+    }
+    await bookmarkStore.addBookmark(createData)
+    // Keep the edit form open so user can continue editing if needed
+  } catch (error) {
+    console.error('Failed to duplicate bookmark:', error)
+  }
+}
+
 async function handleDeleteBookmark(id: string) {
   try {
     await bookmarkStore.removeBookmark(id)
@@ -230,6 +247,41 @@ async function handleDeleteGroup(id: string) {
     editingGroup.value = null
   } catch (error) {
     console.error('Failed to delete group:', error)
+  }
+}
+
+async function handleDuplicateGroup(group: Group) {
+  try {
+    if (!tabStore.activeTabId) {
+      console.error('No active tab selected')
+      return
+    }
+    // Create the new group
+    const newGroup = await groupStore.addGroup({
+      name: `${group.name} copy`,
+      color: group.color,
+      tabId: tabStore.activeTabId,
+    })
+    
+    // Get all bookmarks that belong to the original group (not just filtered ones)
+    // We need to fetch all bookmarks, not just the ones in the current tab
+    const allBookmarks = await bookmarkApi.getAllBookmarks()
+    const bookmarksInGroup = allBookmarks.filter(
+      (bookmark) => bookmark.groupIds?.includes(group.id)
+    )
+    
+    // Duplicate each bookmark and assign it only to the new group
+    for (const bookmark of bookmarksInGroup) {
+      await bookmarkStore.addBookmark({
+        name: `${bookmark.name} copy`,
+        url: bookmark.url,
+        tabIds: bookmark.tabIds || (bookmark.tabId ? [bookmark.tabId] : []),
+        groupIds: [newGroup.id],
+      })
+    }
+    // Keep the edit form open so user can continue editing if needed
+  } catch (error) {
+    console.error('Failed to duplicate group:', error)
   }
 }
 
@@ -288,6 +340,63 @@ async function handleDeleteTab(id: string) {
     }
   } catch (error) {
     console.error('Failed to delete tab:', error)
+  }
+}
+
+async function handleDuplicateTab(tab: Tab) {
+  try {
+    // Create the new tab
+    const newTab = await tabStore.addTab({
+      name: `${tab.name} copy`,
+      color: tab.color || undefined,
+    })
+    
+    if (!newTab) {
+      return
+    }
+    
+    // Fetch all groups in the original tab
+    const originalGroups = await groupApi.getAllGroups(tab.id)
+    
+    // Create a mapping of old group IDs to new group IDs
+    const groupIdMap = new Map<string, string>()
+    
+    // Duplicate each group and create the mapping
+    for (const group of originalGroups) {
+      const newGroup = await groupStore.addGroup({
+        name: `${group.name} copy`,
+        color: group.color,
+        tabId: newTab.id,
+      })
+      groupIdMap.set(group.id, newGroup.id)
+    }
+    
+    // Fetch all bookmarks in the original tab
+    const originalBookmarks = await bookmarkApi.getAllBookmarks(tab.id)
+    
+    // Duplicate each bookmark
+    for (const bookmark of originalBookmarks) {
+      // Map old group IDs to new group IDs
+      const newGroupIds = bookmark.groupIds
+        ? bookmark.groupIds
+            .map(oldGroupId => groupIdMap.get(oldGroupId))
+            .filter((id): id is string => id !== undefined)
+        : []
+      
+      await bookmarkStore.addBookmark({
+        name: `${bookmark.name} copy`,
+        url: bookmark.url,
+        tabIds: [newTab.id],
+        groupIds: newGroupIds,
+      })
+    }
+    
+    // Navigate to the new tab
+    router.push({ name: 'tab', params: { tabName: encodeTabName(newTab.name) } })
+    // Close the edit form after duplicating
+    editingTab.value = null
+  } catch (error) {
+    console.error('Failed to duplicate tab:', error)
   }
 }
 
@@ -662,6 +771,7 @@ async function handleUngroupedDrop(event: DragEvent) {
       :bookmark="editingBookmark"
       @submit="handleUpdateBookmark"
       @delete="handleDeleteFromEditForm"
+      @duplicate="handleDuplicateBookmark"
       @cancel="editingBookmark = null"
     />
     <AddGroupForm v-if="showAddGroupForm" @submit="handleAddGroup" @cancel="showAddGroupForm = false" />
@@ -670,6 +780,7 @@ async function handleUngroupedDrop(event: DragEvent) {
       :group="editingGroup"
       @submit="handleUpdateGroup"
       @delete="handleDeleteGroup"
+      @duplicate="handleDuplicateGroup"
       @cancel="editingGroup = null"
     />
     <AddTabForm v-if="showAddTabForm" @submit="handleAddTab" @cancel="showAddTabForm = false" />
@@ -679,6 +790,7 @@ async function handleUngroupedDrop(event: DragEvent) {
       :error="tabStore.error"
       @submit="handleUpdateTab"
       @delete="handleDeleteTab"
+      @duplicate="handleDuplicateTab"
       @cancel="() => { editingTab = null; tabStore.error = null }"
     />
     <SettingsModal v-if="showSettingsModal" @cancel="showSettingsModal = false" />

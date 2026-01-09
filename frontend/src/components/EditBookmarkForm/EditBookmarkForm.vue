@@ -13,6 +13,7 @@ interface Props {
 interface Emits {
   (e: 'submit', id: string, data: UpdateBookmarkDto): void
   (e: 'delete', id: string): void
+  (e: 'duplicate', bookmark: Bookmark): void
   (e: 'cancel'): void
 }
 
@@ -128,6 +129,10 @@ function handleDelete() {
   emit('delete', props.bookmark.id)
 }
 
+function handleDuplicate() {
+  emit('duplicate', props.bookmark)
+}
+
 function handleCancel() {
   name.value = props.bookmark.name
   url.value = props.bookmark.url
@@ -212,30 +217,53 @@ const sortedTabs = computed(() => {
     >
       <div class="flex justify-between items-center mb-6">
         <h2 class="m-0 text-[var(--color-text)]">Edit Bookmark</h2>
-        <button
-          type="button"
-          class="p-2 text-[#dc3545] hover:bg-[#dc3545]/10 rounded transition-colors duration-200 cursor-pointer"
-          @click="handleDelete"
-          aria-label="Delete bookmark"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="p-2 text-[var(--color-text)] hover:bg-[var(--color-background-mute)] rounded transition-colors duration-200 cursor-pointer"
+            @click="handleDuplicate"
+            aria-label="Duplicate bookmark"
           >
-            <path d="M3 6h18" />
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-            <line x1="10" y1="11" x2="10" y2="17" />
-            <line x1="14" y1="11" x2="14" y2="17" />
-          </svg>
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="p-2 text-[#dc3545] hover:bg-[#dc3545]/10 rounded transition-colors duration-200 cursor-pointer"
+            @click="handleDelete"
+            aria-label="Delete bookmark"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 6h18" />
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+              <line x1="10" y1="11" x2="10" y2="17" />
+              <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
+          </button>
+        </div>
       </div>
       <form @submit.prevent="handleSubmit">
         <div class="mb-6">
