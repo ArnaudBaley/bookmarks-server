@@ -1,0 +1,69 @@
+version: '3.8'
+
+name: bookmarks-server-dev
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: deploy/Dockerfile.dev
+    container_name: bookmarks-backend-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot-reload
+      - ./backend/src:/app/src
+      - ./backend/tsconfig.json:/app/tsconfig.json
+      - ./backend/tsconfig.build.json:/app/tsconfig.build.json
+      - ./backend/nest-cli.json:/app/nest-cli.json
+      # Mount data directory for database persistence
+      - ./backend/deploy/data:/app/data
+      # Exclude node_modules from volume mount (use container's)
+      - /app/node_modules
+    environment:
+      - PORT=${PORT:-3000}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - DATABASE_PATH=${DATABASE_PATH:-/app/data/bookmarks.db}
+    networks:
+      - bookmarks-network-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: deploy/Dockerfile.dev
+    container_name: bookmarks-frontend-dev
+    ports:
+      - "5173:5173"
+    volumes:
+      # Mount source code for hot-reload
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
+      - ./frontend/tailwind.config.ts:/app/tailwind.config.ts
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+      # Exclude node_modules from volume mount (use container's)
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:3000}
+      - VITE_USE_MOCK_API=${VITE_USE_MOCK_API:-false}
+    networks:
+      - bookmarks-network-dev
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+networks:
+  bookmarks-network-dev:
+    driver: bridge
+    name: bookmarks-network-dev
+

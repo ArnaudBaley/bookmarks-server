@@ -1,0 +1,61 @@
+version: '3.8'
+
+name: bookmarks-server-prod
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: deploy/Dockerfile
+    container_name: bookmarks-backend-prod
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      # Mount data directory for database persistence
+      - ./backend/deploy/data:/app/data
+    environment:
+      - PORT=3000
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:${FRONTEND_PORT:-8080}}
+      - DATABASE_PATH=${DATABASE_PATH:-/app/data/bookmarks.db}
+    networks:
+      - bookmarks-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: deploy/Dockerfile
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:${BACKEND_PORT:-3000}}
+        - VITE_USE_MOCK_API=${VITE_USE_MOCK_API:-false}
+    container_name: bookmarks-frontend-prod
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    environment:
+      # These are set at build time, but kept for reference
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:${BACKEND_PORT:-3000}}
+      - VITE_USE_MOCK_API=${VITE_USE_MOCK_API:-false}
+    networks:
+      - bookmarks-network
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  bookmarks-network:
+    driver: bridge
+    name: bookmarks-network-prod
+
