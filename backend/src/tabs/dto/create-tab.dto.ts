@@ -8,3 +8,4 @@ export class CreateTabDto {
   @IsString()
   color?: string;
 }
+

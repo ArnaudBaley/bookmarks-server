@@ -8,7 +8,7 @@ const meta = {
   tags: ['autodocs'],
   argTypes: {},
   args: {
-    onSubmit: fn(),
+      onSubmit: fn(),
     onCancel: fn(),
   },
 } satisfies Meta<typeof AddBookmarkForm>
