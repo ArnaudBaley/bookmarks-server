@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createTestPinia } from '@/test-utils'
 import { useBookmarkStore } from './bookmark'
+import { useTabStore } from '@/stores/tab/tab'
 import { createBookmark, createBookmarkArray, createBookmarkDto } from '@/test-utils'
 import * as bookmarkApiModule from '@/services/bookmarkApi/bookmarkApi'
 import type { Bookmark } from '@/types/bookmark'
@@ -256,6 +257,256 @@ describe('Bookmark Store', () => {
       await store.removeBookmark('non-existent-id')
 
       expect(store.bookmarks).toHaveLength(1)
+    })
+  })
+
+  describe('filteredBookmarks', () => {
+    it('returns empty array when no active tab', () => {
+      const tabStore = useTabStore()
+      tabStore.activeTabId = null
+
+      store.bookmarks = createBookmarkArray(3)
+
+      expect(store.filteredBookmarks).toEqual([])
+    })
+
+    it('filters bookmarks by tabId', () => {
+      const tabStore = useTabStore()
+      tabStore.activeTabId = 'active-tab-id'
+
+      const bookmark1 = createBookmark({ id: 'id-1', tabId: 'active-tab-id' })
+      const bookmark2 = createBookmark({ id: 'id-2', tabId: 'other-tab-id' })
+      store.bookmarks = [bookmark1, bookmark2]
+
+      expect(store.filteredBookmarks).toHaveLength(1)
+      expect(store.filteredBookmarks[0].id).toBe('id-1')
+    })
+
+    it('filters bookmarks by tabIds array', () => {
+      const tabStore = useTabStore()
+      tabStore.activeTabId = 'active-tab-id'
+
+      const bookmark1 = createBookmark({ id: 'id-1', tabIds: ['active-tab-id', 'other-tab'] })
+      const bookmark2 = createBookmark({ id: 'id-2', tabIds: ['other-tab'] })
+      store.bookmarks = [bookmark1, bookmark2]
+
+      expect(store.filteredBookmarks).toHaveLength(1)
+      expect(store.filteredBookmarks[0].id).toBe('id-1')
+    })
+  })
+
+  describe('getBookmarksByGroup', () => {
+    it('returns bookmarks for a specific group', () => {
+      const tabStore = useTabStore()
+      tabStore.activeTabId = 'active-tab-id'
+
+      const bookmark1 = createBookmark({ id: 'id-1', tabId: 'active-tab-id', groupIds: ['group-1', 'group-2'] })
+      const bookmark2 = createBookmark({ id: 'id-2', tabId: 'active-tab-id', groupIds: ['group-2'] })
+      const bookmark3 = createBookmark({ id: 'id-3', tabId: 'active-tab-id', groupIds: ['group-3'] })
+      store.bookmarks = [bookmark1, bookmark2, bookmark3]
+
+      const result = store.getBookmarksByGroup('group-2')
+
+      expect(result).toHaveLength(2)
+      expect(result.map((b) => b.id)).toEqual(['id-1', 'id-2'])
+    })
+
+    it('returns empty array when no bookmarks in group', () => {
+      const tabStore = useTabStore()
+      tabStore.activeTabId = 'active-tab-id'
+
+      const bookmark = createBookmark({ id: 'id-1', tabId: 'active-tab-id', groupIds: ['group-1'] })
+      store.bookmarks = [bookmark]
+
+      const result = store.getBookmarksByGroup('group-2')
+
+      expect(result).toEqual([])
+    })
+  })
+
+  describe('getUngroupedBookmarks', () => {
+    it('returns bookmarks without groupIds', () => {
+      const tabStore = useTabStore()
+      tabStore.activeTabId = 'active-tab-id'
+
+      const bookmark1 = createBookmark({ id: 'id-1', tabId: 'active-tab-id' })
+      const bookmark2 = createBookmark({ id: 'id-2', tabId: 'active-tab-id', groupIds: ['group-1'] })
+      const bookmark3 = createBookmark({ id: 'id-3', tabId: 'active-tab-id', groupIds: [] })
+      store.bookmarks = [bookmark1, bookmark2, bookmark3]
+
+      const result = store.getUngroupedBookmarks()
+
+      expect(result).toHaveLength(2)
+      expect(result.map((b) => b.id)).toEqual(['id-1', 'id-3'])
+    })
+
+    it('returns empty array when all bookmarks are grouped', () => {
+      const tabStore = useTabStore()
+      tabStore.activeTabId = 'active-tab-id'
+
+      const bookmark = createBookmark({ id: 'id-1', tabId: 'active-tab-id', groupIds: ['group-1'] })
+      store.bookmarks = [bookmark]
+
+      const result = store.getUngroupedBookmarks()
+
+      expect(result).toEqual([])
+    })
+  })
+
+  describe('updateBookmark', () => {
+    it('updates bookmark successfully', async () => {
+      const bookmark = createBookmark({ id: 'id-1', name: 'Original Name' })
+      store.bookmarks = [bookmark]
+
+      const updatedBookmark = createBookmark({ id: 'id-1', name: 'Updated Name' })
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'updateBookmark').mockResolvedValue(updatedBookmark)
+
+      const result = await store.updateBookmark('id-1', { name: 'Updated Name' })
+
+      expect(result).toEqual(updatedBookmark)
+      expect(store.bookmarks[0].name).toBe('Updated Name')
+      expect(store.loading).toBe(false)
+      expect(store.error).toBe(null)
+    })
+
+    it('sets loading to true during update', async () => {
+      const bookmark = createBookmark({ id: 'id-1' })
+      store.bookmarks = [bookmark]
+
+      let resolvePromise: (value: Bookmark) => void
+      const promise = new Promise<Bookmark>((resolve) => {
+        resolvePromise = resolve
+      })
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'updateBookmark').mockReturnValue(promise)
+
+      const updatePromise = store.updateBookmark('id-1', { name: 'Updated' })
+      expect(store.loading).toBe(true)
+
+      resolvePromise!(createBookmark({ id: 'id-1', name: 'Updated' }))
+      await updatePromise
+
+      expect(store.loading).toBe(false)
+    })
+
+    it('handles update error and throws', async () => {
+      const bookmark = createBookmark({ id: 'id-1' })
+      store.bookmarks = [bookmark]
+      const errorMessage = 'Failed to update bookmark'
+
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'updateBookmark').mockRejectedValue(
+        new Error(errorMessage)
+      )
+
+      await expect(store.updateBookmark('id-1', { name: 'Updated' })).rejects.toThrow()
+
+      expect(store.error).toBe(errorMessage)
+      expect(store.loading).toBe(false)
+      expect(store.bookmarks[0].name).toBe('Test Bookmark') // Should not be updated
+    })
+
+    it('handles non-Error exceptions', async () => {
+      const bookmark = createBookmark({ id: 'id-1' })
+      store.bookmarks = [bookmark]
+
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'updateBookmark').mockRejectedValue('String error')
+
+      await expect(store.updateBookmark('id-1', { name: 'Updated' })).rejects.toBe('String error')
+
+      expect(store.error).toBe('Failed to update bookmark')
+    })
+
+    it('clears error before updating', async () => {
+      store.error = 'Previous error'
+      const bookmark = createBookmark({ id: 'id-1' })
+      store.bookmarks = [bookmark]
+      const updatedBookmark = createBookmark({ id: 'id-1', name: 'Updated' })
+
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'updateBookmark').mockResolvedValue(updatedBookmark)
+
+      await store.updateBookmark('id-1', { name: 'Updated' })
+
+      expect(store.error).toBe(null)
+    })
+
+    it('does not update bookmark if id does not exist', async () => {
+      const bookmark = createBookmark({ id: 'id-1' })
+      store.bookmarks = [bookmark]
+      const updatedBookmark = createBookmark({ id: 'non-existent', name: 'Updated' })
+
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'updateBookmark').mockResolvedValue(updatedBookmark)
+
+      await store.updateBookmark('non-existent', { name: 'Updated' })
+
+      expect(store.bookmarks).toHaveLength(1)
+      expect(store.bookmarks[0].id).toBe('id-1')
+    })
+  })
+
+  describe('deleteAllBookmarks', () => {
+    it('deletes all bookmarks successfully', async () => {
+      store.bookmarks = createBookmarkArray(3)
+
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'deleteAllBookmarks').mockResolvedValue(undefined)
+
+      await store.deleteAllBookmarks()
+
+      expect(store.bookmarks).toEqual([])
+      expect(store.loading).toBe(false)
+      expect(store.error).toBe(null)
+    })
+
+    it('sets loading to true during delete all', async () => {
+      store.bookmarks = createBookmarkArray(2)
+
+      let resolvePromise: () => void
+      const promise = new Promise<void>((resolve) => {
+        resolvePromise = resolve
+      })
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'deleteAllBookmarks').mockReturnValue(promise)
+
+      const deletePromise = store.deleteAllBookmarks()
+      expect(store.loading).toBe(true)
+
+      resolvePromise!()
+      await deletePromise
+
+      expect(store.loading).toBe(false)
+    })
+
+    it('handles delete all error and throws', async () => {
+      store.bookmarks = createBookmarkArray(2)
+      const errorMessage = 'Failed to delete all bookmarks'
+
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'deleteAllBookmarks').mockRejectedValue(
+        new Error(errorMessage)
+      )
+
+      await expect(store.deleteAllBookmarks()).rejects.toThrow()
+
+      expect(store.error).toBe(errorMessage)
+      expect(store.loading).toBe(false)
+      expect(store.bookmarks).toHaveLength(2) // Should not be deleted on error
+    })
+
+    it('handles non-Error exceptions', async () => {
+      store.bookmarks = createBookmarkArray(2)
+
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'deleteAllBookmarks').mockRejectedValue('String error')
+
+      await expect(store.deleteAllBookmarks()).rejects.toBe('String error')
+
+      expect(store.error).toBe('Failed to delete all bookmarks')
+    })
+
+    it('clears error before deleting all', async () => {
+      store.error = 'Previous error'
+      store.bookmarks = createBookmarkArray(2)
+
+      vi.spyOn(bookmarkApiModule.bookmarkApi, 'deleteAllBookmarks').mockResolvedValue(undefined)
+
+      await store.deleteAllBookmarks()
+
+      expect(store.error).toBe(null)
     })
   })
 })

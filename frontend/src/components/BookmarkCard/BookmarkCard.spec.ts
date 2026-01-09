@@ -8,6 +8,16 @@ describe('BookmarkCard', () => {
 
   beforeEach(() => {
     mockOpen = mockWindowOpen()
+    // Mock DragEvent for jsdom
+    if (typeof global.DragEvent === 'undefined') {
+      global.DragEvent = class DragEvent extends Event {
+        dataTransfer: DataTransfer | null = null
+        constructor(type: string, eventInitDict?: DragEventInit) {
+          super(type, eventInitDict)
+          this.dataTransfer = eventInitDict?.dataTransfer || null
+        }
+      } as typeof DragEvent
+    }
   })
 
   afterEach(() => {
@@ -236,6 +246,94 @@ describe('BookmarkCard', () => {
     // Cleanup
     document.body.removeChild(outsideElement)
     wrapper.unmount()
+  })
+
+  it('handles drag start event', async () => {
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    const card = wrapper.find('[role="button"]')
+    const setDataSpy = vi.fn()
+    const dragEvent = new DragEvent('dragstart', { bubbles: true })
+    Object.defineProperty(dragEvent, 'dataTransfer', {
+      value: {
+        effectAllowed: '',
+        setData: setDataSpy,
+      },
+      writable: true,
+      configurable: true,
+    })
+
+    // Dispatch event directly on the element
+    card.element.dispatchEvent(dragEvent)
+    await wrapper.vm.$nextTick()
+
+    expect(setDataSpy).toHaveBeenCalledWith('text/plain', 'test-id')
+    expect(dragEvent.dataTransfer?.effectAllowed).toBe('move')
+  })
+
+  it('handles drag end event and restores opacity', async () => {
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    const card = wrapper.find('[role="button"]')
+    const dragEvent = new DragEvent('dragend', { bubbles: true })
+    Object.defineProperty(dragEvent, 'target', {
+      value: card.element,
+      writable: true,
+      configurable: true,
+    })
+
+    // Set opacity to 0.5 first
+    ;(card.element as HTMLElement).style.opacity = '0.5'
+
+    // Dispatch event directly on the element
+    card.element.dispatchEvent(dragEvent)
+    await wrapper.vm.$nextTick()
+
+    expect((card.element as HTMLElement).style.opacity).toBe('1')
+  })
+
+  it('handles drag start when dataTransfer is null', async () => {
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    const card = wrapper.find('[role="button"]')
+    const dragEvent = new DragEvent('dragstart', { bubbles: true })
+    Object.defineProperty(dragEvent, 'dataTransfer', {
+      value: null,
+      writable: true,
+      configurable: true,
+    })
+
+    // Should not throw error - dispatch event directly
+    card.element.dispatchEvent(dragEvent)
+    await wrapper.vm.$nextTick()
+  })
+
+  it('handles drag end when target is not HTMLElement', async () => {
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    const card = wrapper.find('[role="button"]')
+    const dragEvent = new DragEvent('dragend', { bubbles: true })
+    Object.defineProperty(dragEvent, 'target', {
+      value: null,
+      writable: true,
+      configurable: true,
+    })
+
+    // Should not throw error - dispatch event directly
+    card.element.dispatchEvent(dragEvent)
+    await wrapper.vm.$nextTick()
   })
 
 })

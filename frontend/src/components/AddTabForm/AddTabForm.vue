@@ -67,11 +67,17 @@ function handleSubmit() {
 
   // Only reset form if no error occurred
   // If there's an error, keep the form open so user can see it
-  if (!tabStore.error) {
-    name.value = ''
-    color.value = '#3b82f6'
-    error.value = null
-  }
+  // Check error after nextTick to allow async store actions to set error
+  // Use a small delay to ensure store actions have time to set error
+  nextTick(() => {
+    setTimeout(() => {
+      if (!tabStore.error) {
+        name.value = ''
+        color.value = '#3b82f6'
+        error.value = null
+      }
+    }, 0)
+  })
 }
 
 function handleCancel() {
