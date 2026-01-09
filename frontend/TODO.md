@@ -23,7 +23,11 @@ Each group can be copy or moved to another tab
 
 - When user use the keys shortcut CTRL + SHIFT, it will change the current tab to the next one
 
-- UI tests in docker instead from host
-
 - User must be able to sort manually sections
 
+
+# Dev tool
+
+- I want eslint and prettier on the codebase. It must lint and format at every save.
+
+- UI tests in docker instead from host
