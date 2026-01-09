@@ -36,6 +36,7 @@ const editingTab = ref<Tab | null>(null)
 const isDragOverUngrouped = ref(false)
 const isUngroupedExpanded = ref(true)
 const selectedGroupIdForBookmark = ref<string | null>(null)
+const groupCardRefs = ref<Map<string, InstanceType<typeof GroupCard>>>(new Map())
 
 const ungroupedBookmarks = computed(() => groupStore.getUngroupedBookmarks())
 const filteredGroups = computed(() => groupStore.filteredGroups)
@@ -586,6 +587,30 @@ async function handleUngroupedDrop(event: DragEvent) {
     console.error('Failed to add bookmark:', error)
   }
 }
+
+function foldAllGroups() {
+  groupCardRefs.value.forEach((ref) => {
+    if (ref && typeof ref.setExpanded === 'function') {
+      ref.setExpanded(false)
+    }
+  })
+}
+
+function unfoldAllGroups() {
+  groupCardRefs.value.forEach((ref) => {
+    if (ref && typeof ref.setExpanded === 'function') {
+      ref.setExpanded(true)
+    }
+  })
+}
+
+function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null) {
+  if (el) {
+    groupCardRefs.value.set(group.id, el)
+  } else {
+    groupCardRefs.value.delete(group.id)
+  }
+}
 </script>
 
 <template>
@@ -621,6 +646,50 @@ async function handleUngroupedDrop(event: DragEvent) {
 
     <!-- Tab Switcher -->
     <TabSwitcher v-if="tabStore.tabs.length > 0" @tab-edit="handleModifyTab" @tab-add="showAddTabForm = true" />
+
+    <!-- Fold/Unfold All Groups Controls -->
+    <div v-if="filteredGroups.length > 0" class="mb-4 flex justify-center gap-2">
+      <button
+        class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
+        @click="foldAllGroups"
+        aria-label="Fold all groups"
+        title="Fold all groups"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      <button
+        class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
+        @click="unfoldAllGroups"
+        aria-label="Unfold all groups"
+        title="Unfold all groups"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="18 15 12 9 6 15" />
+        </svg>
+      </button>
+    </div>
 
     <div
       v-if="(bookmarkStore.loading || groupStore.loading || tabStore.loading) && bookmarkStore.bookmarks.length === 0 && groupStore.groups.length === 0"
@@ -729,6 +798,7 @@ async function handleUngroupedDrop(event: DragEvent) {
         <GroupCard
           v-for="group in filteredGroups"
           :key="group.id"
+          :ref="(el) => setGroupCardRef(group, el as InstanceType<typeof GroupCard> | null)"
           :group="group"
           :bookmarks="groupStore.getBookmarksByGroup(group.id)"
           @modify="handleModifyGroup"

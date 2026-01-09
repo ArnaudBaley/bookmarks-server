@@ -28,6 +28,15 @@ const isDragOver = ref(false)
 
 const bookmarksCount = computed(() => props.bookmarks.length)
 
+// Expose method to control expansion from parent
+function setExpanded(expanded: boolean) {
+  isExpanded.value = expanded
+}
+
+defineExpose({
+  setExpanded,
+})
+
 function normalizeUrl(urlString: string): string {
   if (!urlString) return ''
   
