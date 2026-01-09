@@ -589,19 +589,25 @@ async function handleUngroupedDrop(event: DragEvent) {
 }
 
 function foldAllGroups() {
+  // Fold all regular groups
   groupCardRefs.value.forEach((ref) => {
     if (ref && typeof ref.setExpanded === 'function') {
       ref.setExpanded(false)
     }
   })
+  // Fold ungrouped section
+  isUngroupedExpanded.value = false
 }
 
 function unfoldAllGroups() {
+  // Unfold all regular groups
   groupCardRefs.value.forEach((ref) => {
     if (ref && typeof ref.setExpanded === 'function') {
       ref.setExpanded(true)
     }
   })
+  // Unfold ungrouped section
+  isUngroupedExpanded.value = true
 }
 
 function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null) {
@@ -648,7 +654,7 @@ function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null
     <TabSwitcher v-if="tabStore.tabs.length > 0" @tab-edit="handleModifyTab" @tab-add="showAddTabForm = true" />
 
     <!-- Fold/Unfold All Groups Controls -->
-    <div v-if="filteredGroups.length > 0" class="mb-4 flex justify-center gap-2">
+    <div v-if="filteredGroups.length > 0 || ungroupedBookmarks.length > 0" class="mb-4 flex justify-center gap-2">
       <button
         class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
         @click="foldAllGroups"

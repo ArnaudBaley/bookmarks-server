@@ -4,6 +4,7 @@
 
 # UI
 
+- When I fold and unfold, I want all groups to fold or unfold including ungrouped group
 
 
 # Tests
