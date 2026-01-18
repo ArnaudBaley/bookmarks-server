@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { Group } from '../entities/group.entity';
@@ -23,13 +22,18 @@ describe('GroupsService', () => {
     findOne: jest.fn(),
   };
 
+  const mockGroupRepositoryWithClear = {
+    ...mockGroupRepository,
+    clear: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GroupsService,
         {
           provide: getRepositoryToken(Group),
-          useValue: mockGroupRepository,
+          useValue: mockGroupRepositoryWithClear,
         },
         {
           provide: getRepositoryToken(Bookmark),
@@ -39,10 +43,6 @@ describe('GroupsService', () => {
     }).compile();
 
     service = module.get<GroupsService>(GroupsService);
-    groupRepository = module.get<Repository<Group>>(getRepositoryToken(Group));
-    bookmarkRepository = module.get<Repository<Bookmark>>(
-      getRepositoryToken(Bookmark),
-    );
 
     jest.clearAllMocks();
   });
@@ -228,6 +228,28 @@ describe('GroupsService', () => {
       expect(result.color).toBe('#ef4444');
     });
 
+    it('should update group tabId', async () => {
+      const existingGroup = {
+        id: '1',
+        name: 'Group',
+        color: '#3b82f6',
+        tabId: 'tab-1',
+        bookmarks: [],
+      };
+      const updateDto: UpdateGroupDto = { tabId: 'tab-2' };
+      const updatedGroup = { ...existingGroup, tabId: 'tab-2' };
+
+      mockGroupRepository.findOne
+        .mockResolvedValueOnce(existingGroup)
+        .mockResolvedValueOnce(updatedGroup);
+      mockGroupRepository.save.mockResolvedValue(updatedGroup);
+
+      const result = await service.update('1', updateDto);
+
+      expect(result.tabId).toBe('tab-2');
+      expect(mockGroupRepository.save).toHaveBeenCalled();
+    });
+
     it('should throw NotFoundException when group not found', async () => {
       mockGroupRepository.findOne.mockResolvedValue(null);
 
@@ -391,6 +413,59 @@ describe('GroupsService', () => {
       await expect(
         service.removeBookmarkFromGroup('group-1', 'non-existent'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('removeAll', () => {
+    it('should remove all groups and clean up relationships', async () => {
+      const mockGroups = [
+        {
+          id: 'group-1',
+          name: 'Group 1',
+          color: '#3b82f6',
+          tabId: 'tab-1',
+          bookmarks: [{ id: 'bookmark-1' }],
+        },
+        {
+          id: 'group-2',
+          name: 'Group 2',
+          color: '#ef4444',
+          tabId: 'tab-1',
+          bookmarks: [],
+        },
+      ];
+
+      mockGroupRepository.find.mockResolvedValue(mockGroups);
+      mockGroupRepository.save.mockResolvedValue({});
+      mockGroupRepositoryWithClear.clear.mockResolvedValue(undefined);
+
+      await service.removeAll();
+
+      expect(mockGroupRepository.find).toHaveBeenCalledWith({
+        relations: ['bookmarks'],
+      });
+      expect(mockGroupRepository.save).toHaveBeenCalledTimes(1); // Only group-1 has bookmarks
+      expect(mockGroupRepositoryWithClear.clear).toHaveBeenCalled();
+    });
+
+    it('should remove all groups when no bookmarks exist', async () => {
+      const mockGroups = [
+        {
+          id: 'group-1',
+          name: 'Group 1',
+          color: '#3b82f6',
+          tabId: 'tab-1',
+          bookmarks: [],
+        },
+      ];
+
+      mockGroupRepository.find.mockResolvedValue(mockGroups);
+      mockGroupRepositoryWithClear.clear.mockResolvedValue(undefined);
+
+      await service.removeAll();
+
+      expect(mockGroupRepository.save).not.toHaveBeenCalled();
+      expect(mockGroupRepositoryWithClear.clear).toHaveBeenCalled();
     });
   });
 });

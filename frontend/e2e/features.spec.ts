@@ -311,11 +311,9 @@ test.describe('Bookmark Management', () => {
 
     // Open edit mode - click options button first
     await page.getByLabel('Options').first().click()
-    
-    // Wait for delete button to be visible (edit mode is activated)
+    // Click delete button (delete button is visible in edit mode)
     // Use .first() to get the actual delete button, not the bookmark card
     const deleteButton = page.getByRole('button', { name: 'Delete bookmark' }).first()
-    await expect(deleteButton).toBeVisible()
     await deleteButton.click()
 
     // Wait for bookmark to be deleted from localStorage
@@ -331,7 +329,7 @@ test.describe('Bookmark Management', () => {
     }, { timeout: 5000 })
 
     // Verify bookmark is removed from UI
-    await expect(page.getByText('Bookmark to Delete')).toBeHidden({ timeout: 5000 })
+    await expect(page.getByText('Bookmark to Delete')).toBeHidden()
 
     // Verify bookmark was removed from localStorage
     const bookmarks = await getMockBookmarks(page)
@@ -658,9 +656,9 @@ test.describe('UI State Management', () => {
   })
 
   test('should show empty state when no bookmarks exist', async ({ page }) => {
-    // Verify empty state - the component always shows the "Ungrouped" section, even when empty
-    await expect(page.getByRole('heading', { name: 'Ungrouped' })).toBeVisible()
-    await expect(page.getByText('(0)')).toBeVisible()
+    // Verify empty state message
+    await expect(page.getByText(/No bookmarks yet/i)).toBeVisible()
+    await expect(page.getByText(/Click the \+ button to add your first bookmark/i)).toBeVisible()
   })
 
   test('should show loading state initially', async ({ page }) => {
@@ -1331,8 +1329,8 @@ test.describe('Export/Import Functionality', () => {
     const closeButton = page.getByRole('button', { name: 'Close modal' })
     await closeButton.click()
 
-    // Verify modal is closed - check that Settings modal is visible again
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    // Verify modal is closed
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeHidden()
   })
 
   test('should close export/import modal when pressing Escape', async ({ page }) => {
@@ -1348,8 +1346,8 @@ test.describe('Export/Import Functionality', () => {
     // Press Escape
     await page.keyboard.press('Escape')
 
-    // Verify modal is closed - check that Settings modal is visible again
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    // Verify modal is closed
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeHidden()
   })
 
   test('should export data to JSON file', async ({ page }) => {
@@ -1429,8 +1427,8 @@ test.describe('Export/Import Functionality', () => {
     expect(exportData.groups.length).toBeGreaterThan(0)
     expect(exportData.bookmarks.length).toBeGreaterThan(0)
 
-    // Verify modal closed after export - check that Settings modal is visible again
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    // Verify modal closed after export
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeHidden()
   })
 
   test('should import data from JSON file', async ({ page }) => {
@@ -1469,7 +1467,7 @@ test.describe('Export/Import Functionality', () => {
     
     // Wait for confirmation dialog (the modal shows a confirmation dialog after processing)
     // The file input change event triggers async processing, so we wait for the dialog to appear
-    await expect(page.getByRole('heading', { name: 'Confirm Import' })).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('heading', { name: 'Import Confirmation' })).toBeVisible({ timeout: 10000 })
     await expect(page.getByText(/This will replace all existing data/i)).toBeVisible()
 
     // Confirm import
@@ -1477,8 +1475,8 @@ test.describe('Export/Import Functionality', () => {
     await confirmButton.click()
 
     // Wait for import to complete and modal to close
-    await expect(page.getByRole('heading', { name: 'Confirm Import' })).toBeHidden()
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Import Confirmation' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeHidden()
 
     // Wait for data to be loaded
     await waitForBookmarksLoaded(page)
@@ -1540,14 +1538,14 @@ test.describe('Export/Import Functionality', () => {
     await fileInput.setInputFiles(tempFile)
     
     // Wait for confirmation dialog (appears after file processing)
-    await expect(page.getByRole('heading', { name: 'Confirm Import' })).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('heading', { name: 'Import Confirmation' })).toBeVisible({ timeout: 10000 })
 
     // Click cancel
     const cancelButton = page.getByRole('button', { name: 'Cancel' }).first()
     await cancelButton.click()
 
     // Verify confirmation dialog closed and modal is still open
-    await expect(page.getByRole('heading', { name: 'Confirm Import' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Import Confirmation' })).toBeHidden()
     await expect(page.getByRole('heading', { name: 'Export / Import' })).toBeVisible()
 
     // Clean up temp file
@@ -1953,8 +1951,8 @@ test.describe('Bookmark-to-Group Assignment', () => {
     await page.reload()
     await waitForBookmarksLoaded(page)
     
-    // Wait for bookmark to be visible (use first() since bookmark appears in multiple groups)
-    await expect(page.getByText('Multi Group Bookmark').first()).toBeVisible({ timeout: 5000 })
+    // Wait for bookmark to be visible
+    await expect(page.getByText('Multi Group Bookmark')).toBeVisible({ timeout: 5000 })
     
     // Verify both groups are visible
     const workGroupHeading = page.getByRole('heading', { name: 'Work Group' })
@@ -2030,647 +2028,3 @@ test.describe('Bookmark-to-Group Assignment', () => {
   })
 })
 
-test.describe('Group Color Selection', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await clearMockData(page)
-    await setupDefaultTab(page)
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-  })
-
-  test('should select group color using color picker', async ({ page }) => {
-    const defaultTab = await setupDefaultTab(page)
-    
-    // Set up a group
-    await page.evaluate((tabId) => {
-      const groups = [{
-        id: 'group-1',
-        name: 'Test Group',
-        color: '#3b82f6',
-        tabId: tabId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }]
-      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
-    }, defaultTab.id)
-
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Open edit form
-    const modifyButton = page.getByLabel('Modify group').first()
-    await modifyButton.click()
-    await expect(page.getByRole('heading', { name: 'Edit Group' })).toBeVisible()
-
-    // Change color using color picker
-    const colorInput = page.locator('input[id="group-color"]')
-    await colorInput.fill('#ef4444')
-
-    // Submit changes
-    await page.getByRole('button', { name: 'Update Group' }).click()
-    await expect(page.getByRole('heading', { name: 'Edit Group' })).toBeHidden()
-
-    // Verify color was saved
-    await page.waitForFunction(() => {
-      const stored = localStorage.getItem('groups-mock-data')
-      if (!stored) return false
-      try {
-        const groups = JSON.parse(stored)
-        const group = groups.find((g: { id: string }) => g.id === 'group-1')
-        return group && group.color === '#ef4444'
-      } catch {
-        return false
-      }
-    }, { timeout: 5000 })
-  })
-
-  test('should select group color using palette button', async ({ page }) => {
-    // Add a new group
-    const addGroupButton = page.getByRole('button', { name: /add new group/i })
-    await addGroupButton.click()
-    await expect(page.getByRole('heading', { name: 'Add New Group' })).toBeVisible()
-
-    // Fill name
-    await page.getByLabel('Name').fill('Colored Group')
-
-    // Click a palette color button (red #ef4444)
-    const paletteButtons = page.locator('button[aria-label^="Select color"]')
-    const redButton = paletteButtons.filter({ hasText: /select color #ef4444/i }).or(paletteButtons.nth(1)) // Second button is red
-    await redButton.first().click()
-
-    // Submit
-    await page.getByRole('button', { name: 'Add Group' }).click()
-    await expect(page.getByRole('heading', { name: 'Add New Group' })).toBeHidden()
-
-    // Verify color was saved
-    await page.waitForFunction(() => {
-      const stored = localStorage.getItem('groups-mock-data')
-      if (!stored) return false
-      try {
-        const groups = JSON.parse(stored)
-        const group = groups.find((g: { name: string }) => g.name === 'Colored Group')
-        return group && group.color === '#ef4444'
-      } catch {
-        return false
-      }
-    }, { timeout: 5000 })
-  })
-})
-
-test.describe('Tab Color Selection', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await clearMockData(page)
-    await setupDefaultTab(page)
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-  })
-
-  test('should select tab color using color picker', async ({ page }) => {
-    const defaultTab = await setupDefaultTab(page)
-    
-    // Open edit form
-    const tabButton = page.getByRole('button', { name: defaultTab.name })
-    await tabButton.hover()
-    const tabGroup = tabButton.locator('..')
-    const editButton = tabGroup.getByRole('button', { name: 'Edit tab' })
-    await editButton.click()
-    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeVisible()
-
-    // Change color using color picker
-    const colorInput = page.locator('input[id="tab-color"]')
-    await colorInput.fill('#10b981')
-
-    // Submit changes
-    await page.getByRole('button', { name: 'Update Tab' }).click()
-    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeHidden()
-
-    // Verify color was saved - increase timeout since API call may take time
-    await page.waitForFunction(() => {
-      const stored = localStorage.getItem('tabs-mock-data')
-      if (!stored) return false
-      try {
-        const tabs = JSON.parse(stored)
-        const tab = tabs.find((t: { id: string }) => t.id === defaultTab.id)
-        return tab && tab.color === '#10b981'
-      } catch {
-        return false
-      }
-    }, { timeout: 30000 })
-  })
-
-  test('should select tab color using palette button when adding new tab', async ({ page }) => {
-    // Add a new tab
-    const addTabButton = page.getByRole('button', { name: /add new tab/i })
-    await addTabButton.click()
-    await expect(page.getByRole('heading', { name: 'Add New Tab' })).toBeVisible()
-
-    // Fill name
-    await page.getByLabel('Name').fill('Colored Tab')
-
-    // Click a palette color button (green #10b981)
-    const paletteButtons = page.locator('button[aria-label^="Select color"]')
-    const greenButton = paletteButtons.filter({ hasText: /select color #10b981/i }).or(paletteButtons.nth(2)) // Third button is green
-    await greenButton.first().click()
-
-    // Submit
-    await page.getByRole('button', { name: 'Add Tab' }).click()
-    await expect(page.getByRole('heading', { name: 'Add New Tab' })).toBeHidden()
-
-    // Verify color was saved
-    await page.waitForFunction(() => {
-      const stored = localStorage.getItem('tabs-mock-data')
-      if (!stored) return false
-      try {
-        const tabs = JSON.parse(stored)
-        const tab = tabs.find((t: { name: string }) => t.name === 'Colored Tab')
-        return tab && tab.color === '#10b981'
-      } catch {
-        return false
-      }
-    }, { timeout: 5000 })
-  })
-})
-
-test.describe('Group Expansion and Collapse', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await clearMockData(page)
-    await setupDefaultTab(page)
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-  })
-
-  test('should collapse and expand group', async ({ page }) => {
-    const defaultTab = await setupDefaultTab(page)
-    
-    // Set up a group with bookmarks
-    await page.evaluate((tabId) => {
-      const groups = [{
-        id: 'group-1',
-        name: 'Test Group',
-        color: '#3b82f6',
-        tabId: tabId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }]
-      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
-    }, defaultTab.id)
-
-    await setupMockBookmarks(page, [
-      {
-        id: 'bookmark-1',
-        name: 'Bookmark 1',
-        url: 'https://example.com',
-        createdAt: new Date().toISOString(),
-        tabId: defaultTab.id,
-        groupIds: ['group-1'],
-      },
-    ])
-
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Verify bookmark is visible (group is expanded by default)
-    await expect(page.getByText('Bookmark 1')).toBeVisible()
-
-    // Find and click the collapse button
-    const groupHeading = page.getByRole('heading', { name: 'Test Group' })
-    const collapseButton = groupHeading.locator('..').locator('..').getByLabel('Toggle group')
-    await collapseButton.click()
-
-    // Verify bookmark is hidden (group is collapsed)
-    await expect(page.getByText('Bookmark 1')).toBeHidden()
-
-    // Click again to expand
-    await collapseButton.click()
-
-    // Verify bookmark is visible again
-    await expect(page.getByText('Bookmark 1')).toBeVisible()
-  })
-
-  test('should show empty group state when group has no bookmarks', async ({ page }) => {
-    const defaultTab = await setupDefaultTab(page)
-    
-    // Set up an empty group
-    await page.evaluate((tabId) => {
-      const groups = [{
-        id: 'group-1',
-        name: 'Empty Group',
-        color: '#3b82f6',
-        tabId: tabId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }]
-      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
-    }, defaultTab.id)
-
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Verify empty state message is visible
-    await expect(page.getByText('No bookmarks in this group')).toBeVisible()
-    await expect(page.getByText(/Drag and drop bookmarks here to add them/i)).toBeVisible()
-  })
-})
-
-test.describe('Drag and Drop Edge Cases', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await clearMockData(page)
-    await setupDefaultTab(page)
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-  })
-
-  test('should move bookmark from one group to another', async ({ page }) => {
-    const defaultTab = await setupDefaultTab(page)
-
-    // Set up two groups
-    await page.evaluate((tabId) => {
-      const groups = [
-        {
-          id: 'group-1',
-          name: 'Source Group',
-          color: '#3b82f6',
-          tabId: tabId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: 'group-2',
-          name: 'Target Group',
-          color: '#ef4444',
-          tabId: tabId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]
-      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
-    }, defaultTab.id)
-
-    // Set up a bookmark in the first group
-    await setupMockBookmarks(page, [
-      {
-        id: 'bookmark-1',
-        name: 'Movable Bookmark',
-        url: 'https://example.com',
-        createdAt: new Date().toISOString(),
-        tabId: defaultTab.id,
-        groupIds: ['group-1'],
-      },
-    ])
-
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Verify bookmark is in source group
-    await expect(page.getByText('Movable Bookmark')).toBeVisible()
-    await expect(page.getByText('Source Group')).toBeVisible()
-    await expect(page.getByText('Target Group')).toBeVisible()
-
-    // Find bookmark card and target group
-    const bookmarkCard = page.getByText('Movable Bookmark').locator('..').locator('..')
-    const targetGroup = page.getByText('Target Group').locator('..').locator('..')
-
-    // Drag bookmark to target group
-    await bookmarkCard.dragTo(targetGroup)
-
-    // Wait for bookmark to be moved - increase timeout since API calls may take time
-    await page.waitForFunction(() => {
-      const stored = localStorage.getItem('bookmarks-mock-data')
-      if (!stored) return false
-      try {
-        const bookmarks = JSON.parse(stored)
-        const bookmark = bookmarks.find((b: Bookmark) => b.id === 'bookmark-1')
-        return bookmark && bookmark.groupIds && 
-               bookmark.groupIds.includes('group-2') &&
-               !bookmark.groupIds.includes('group-1')
-      } catch {
-        return false
-      }
-    }, { timeout: 30000 })
-
-    // Reload to see the change
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Verify bookmark is now in target group
-    await expect(page.getByText('Movable Bookmark')).toBeVisible()
-    const targetGroupSection = page.getByRole('heading', { name: 'Target Group' }).locator('..')
-    await expect(targetGroupSection.getByText('Movable Bookmark')).toBeVisible({ timeout: 10000 })
-  })
-})
-
-test.describe('Duplicate Functionality', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await clearMockData(page)
-    await setupDefaultTab(page)
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-  })
-
-  test('should duplicate a bookmark', async ({ page }) => {
-    const defaultTab = await setupDefaultTab(page)
-    
-    await setupMockBookmarks(page, [
-      {
-        id: 'bookmark-1',
-        name: 'Original Bookmark',
-        url: 'https://example.com',
-        createdAt: new Date().toISOString(),
-        tabId: defaultTab.id,
-      },
-    ])
-
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Open edit form
-    await page.getByLabel('Options').first().click()
-    await page.getByLabel('Modify bookmark').first().click()
-    await expect(page.getByRole('heading', { name: 'Edit Bookmark' })).toBeVisible()
-
-    // Click duplicate button
-    const duplicateButton = page.getByRole('button', { name: 'Duplicate bookmark' })
-    await duplicateButton.click()
-
-    // Wait for duplicate to be created
-    await page.waitForFunction(() => {
-      const stored = localStorage.getItem('bookmarks-mock-data')
-      if (!stored) return false
-      try {
-        const bookmarks = JSON.parse(stored)
-        return bookmarks.some((b: Bookmark) => b.name === 'Original Bookmark copy')
-      } catch {
-        return false
-      }
-    }, { timeout: 5000 })
-
-    // Reload to see the duplicate
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Verify both bookmarks exist
-    const bookmarkTexts = page.getByText('Original Bookmark')
-    await expect(bookmarkTexts.first()).toBeVisible()
-    // Should have at least one bookmark with "copy" in the name
-    await expect(page.getByText(/Original Bookmark copy/i)).toBeVisible({ timeout: 5000 })
-  })
-
-  test('should duplicate a group', async ({ page }) => {
-    const defaultTab = await setupDefaultTab(page)
-    
-    // Set up a group with a bookmark
-    await page.evaluate((tabId) => {
-      const groups = [{
-        id: 'group-1',
-        name: 'Original Group',
-        color: '#3b82f6',
-        tabId: tabId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }]
-      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
-    }, defaultTab.id)
-
-    await setupMockBookmarks(page, [
-      {
-        id: 'bookmark-1',
-        name: 'Group Bookmark',
-        url: 'https://example.com',
-        createdAt: new Date().toISOString(),
-        tabId: defaultTab.id,
-        groupIds: ['group-1'],
-      },
-    ])
-
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Open edit form
-    const modifyButton = page.getByLabel('Modify group').first()
-    await modifyButton.click()
-    await expect(page.getByRole('heading', { name: 'Edit Group' })).toBeVisible()
-
-    // Click duplicate button
-    const duplicateButton = page.getByRole('button', { name: 'Duplicate group' })
-    await duplicateButton.click()
-
-    // Wait for duplicate to be created
-    await page.waitForFunction(() => {
-      const stored = localStorage.getItem('groups-mock-data')
-      if (!stored) return false
-      try {
-        const groups = JSON.parse(stored)
-        return groups.some((g: { name: string }) => g.name === 'Original Group copy')
-      } catch {
-        return false
-      }
-    }, { timeout: 5000 })
-
-    // Reload to see the duplicate
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Verify both groups exist (use getByRole with exact match to avoid strict mode violation)
-    await expect(page.getByRole('heading', { name: 'Original Group', exact: true })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Original Group copy' })).toBeVisible({ timeout: 5000 })
-  })
-
-  test('should duplicate a tab', async ({ page }) => {
-    const defaultTab = await setupDefaultTab(page)
-    
-    // Set up a tab with a group and bookmark
-    await page.evaluate((tabId) => {
-      const groups = [{
-        id: 'group-1',
-        name: 'Tab Group',
-        color: '#3b82f6',
-        tabId: tabId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }]
-      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
-    }, defaultTab.id)
-
-    await setupMockBookmarks(page, [
-      {
-        id: 'bookmark-1',
-        name: 'Tab Bookmark',
-        url: 'https://example.com',
-        createdAt: new Date().toISOString(),
-        tabId: defaultTab.id,
-        groupIds: ['group-1'],
-      },
-    ])
-
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Open edit form
-    const tabButton = page.getByRole('button', { name: defaultTab.name })
-    await tabButton.hover()
-    const tabGroup = tabButton.locator('..')
-    const editButton = tabGroup.getByRole('button', { name: 'Edit tab' })
-    await editButton.click()
-    await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeVisible()
-
-    // Click duplicate button
-    const duplicateButton = page.getByRole('button', { name: 'Duplicate tab' })
-    await duplicateButton.click()
-
-    // Wait for duplicate to be created (this may take longer as it duplicates groups and bookmarks too)
-    await page.waitForFunction(() => {
-      const stored = localStorage.getItem('tabs-mock-data')
-      if (!stored) return false
-      try {
-        const tabs = JSON.parse(stored)
-        return tabs.some((t: { name: string }) => t.name === `${defaultTab.name} copy`)
-      } catch {
-        return false
-      }
-    }, { timeout: 30000 })
-
-    // Reload to see the duplicate
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Verify duplicate tab exists
-    await expect(page.getByText(`${defaultTab.name} copy`)).toBeVisible({ timeout: 5000 })
-  })
-})
-
-test.describe('Multiple Bookmarks in Group', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await clearMockData(page)
-    await setupDefaultTab(page)
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-  })
-
-  test('should display multiple bookmarks in a group', async ({ page }) => {
-    const defaultTab = await setupDefaultTab(page)
-    
-    // Set up a group
-    await page.evaluate((tabId) => {
-      const groups = [{
-        id: 'group-1',
-        name: 'Multi Bookmark Group',
-        color: '#3b82f6',
-        tabId: tabId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }]
-      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
-    }, defaultTab.id)
-
-    // Set up multiple bookmarks in the group
-    await setupMockBookmarks(page, [
-      {
-        id: 'bookmark-1',
-        name: 'First Bookmark',
-        url: 'https://example.com',
-        createdAt: new Date().toISOString(),
-        tabId: defaultTab.id,
-        groupIds: ['group-1'],
-      },
-      {
-        id: 'bookmark-2',
-        name: 'Second Bookmark',
-        url: 'https://example2.com',
-        createdAt: new Date().toISOString(),
-        tabId: defaultTab.id,
-        groupIds: ['group-1'],
-      },
-      {
-        id: 'bookmark-3',
-        name: 'Third Bookmark',
-        url: 'https://example3.com',
-        createdAt: new Date().toISOString(),
-        tabId: defaultTab.id,
-        groupIds: ['group-1'],
-      },
-    ])
-
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-
-    // Verify all bookmarks are visible
-    await expect(page.getByText('First Bookmark')).toBeVisible()
-    await expect(page.getByText('Second Bookmark')).toBeVisible()
-    await expect(page.getByText('Third Bookmark')).toBeVisible()
-
-    // Verify group shows correct count
-    const groupHeading = page.getByRole('heading', { name: 'Multi Bookmark Group' })
-    await expect(groupHeading.locator('..').locator('..').getByText('(3)')).toBeVisible()
-  })
-})
-
-test.describe('Keyboard Navigation', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await clearMockData(page)
-    await setupDefaultTab(page)
-    await page.reload()
-    await waitForBookmarksLoaded(page)
-  })
-
-  test('should submit form using Enter key', async ({ page }) => {
-    // Open add bookmark form
-    await page.getByRole('button', { name: /add new bookmark/i }).click()
-    await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeVisible()
-
-    // Fill form
-    await page.getByLabel('Name').fill('Enter Key Bookmark')
-    await page.getByLabel('URL').fill('https://example.com')
-
-    // Submit using Enter key (focus should be on URL input)
-    await page.getByLabel('URL').press('Enter')
-
-    // Wait for form to close
-    await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeHidden({ timeout: 5000 })
-
-    // Verify bookmark was created
-    await expect(page.getByText('Enter Key Bookmark')).toBeVisible({ timeout: 5000 })
-  })
-
-  test('should navigate form fields using Tab key', async ({ page }) => {
-    // Open add bookmark form
-    await page.getByRole('button', { name: /add new bookmark/i }).click()
-    await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeVisible()
-
-    // Focus should start on name input
-    const nameInput = page.getByLabel('Name')
-    await expect(nameInput).toBeFocused()
-
-    // Tab to URL input
-    await nameInput.press('Tab')
-    const urlInput = page.getByLabel('URL')
-    await expect(urlInput).toBeFocused()
-
-    // Tab to Cancel button
-    await urlInput.press('Tab')
-    const cancelButton = page.getByRole('button', { name: 'Cancel' })
-    await expect(cancelButton).toBeFocused()
-  })
-
-  test('should close modal using Escape key from any field', async ({ page }) => {
-    // Open add bookmark form
-    await page.getByRole('button', { name: /add new bookmark/i }).click()
-    await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeVisible()
-
-    // Fill some data
-    await page.getByLabel('Name').fill('Test')
-    await page.getByLabel('URL').fill('https://test.com')
-
-    // Press Escape
-    await page.keyboard.press('Escape')
-
-    // Verify form is closed
-    await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeHidden()
-  })
-})

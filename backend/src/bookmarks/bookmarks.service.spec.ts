@@ -1,10 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { In } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { BookmarksService } from './bookmarks.service';
 import { Bookmark } from '../entities/bookmark.entity';
 import { Group } from '../entities/group.entity';
+import { Tab } from '../entities/tab.entity';
 import { CreateBookmarkDto } from './dto/create-bookmark.dto';
 import { UpdateBookmarkDto } from './dto/update-bookmark.dto';
 
@@ -17,13 +18,33 @@ describe('BookmarksService', () => {
     create: jest.fn(),
     save: jest.fn(),
     remove: jest.fn(),
+    clear: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
   const mockGroupRepository = {
     findBy: jest.fn(),
   };
 
+  const mockTabRepository = {
+    findBy: jest.fn(),
+    findOne: jest.fn(),
+  };
+
+  let mockQueryBuilder: {
+    leftJoinAndSelect: jest.Mock;
+    where: jest.Mock;
+    getMany: jest.Mock;
+  };
+
   beforeEach(async () => {
+    mockQueryBuilder = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getMany: jest.fn(),
+    };
+    mockBookmarkRepository.createQueryBuilder = jest.fn(() => mockQueryBuilder);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BookmarksService,
@@ -35,14 +56,14 @@ describe('BookmarksService', () => {
           provide: getRepositoryToken(Group),
           useValue: mockGroupRepository,
         },
+        {
+          provide: getRepositoryToken(Tab),
+          useValue: mockTabRepository,
+        },
       ],
     }).compile();
 
     service = module.get<BookmarksService>(BookmarksService);
-    bookmarkRepository = module.get<Repository<Bookmark>>(
-      getRepositoryToken(Bookmark),
-    );
-    groupRepository = module.get<Repository<Group>>(getRepositoryToken(Group));
 
     jest.clearAllMocks();
   });
@@ -56,6 +77,7 @@ describe('BookmarksService', () => {
           url: 'https://example.com',
           tabId: 'tab-1',
           groups: [],
+          tabs: [],
         },
         {
           id: '2',
@@ -63,20 +85,22 @@ describe('BookmarksService', () => {
           url: 'https://example2.com',
           tabId: 'tab-2',
           groups: [],
+          tabs: [],
         },
       ];
-      mockBookmarkRepository.find.mockResolvedValue(mockBookmarks);
+      mockQueryBuilder.getMany.mockResolvedValue(mockBookmarks);
 
       const result = await service.findAll();
 
       expect(result).toEqual(mockBookmarks);
-      expect(mockBookmarkRepository.find).toHaveBeenCalledWith({
-        where: {},
-        relations: ['groups'],
-      });
+      expect(mockBookmarkRepository.createQueryBuilder).toHaveBeenCalledWith('bookmark');
+      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith('bookmark.groups', 'groups');
+      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith('bookmark.tabs', 'tabs');
+      expect(mockQueryBuilder.where).not.toHaveBeenCalled();
+      expect(mockQueryBuilder.getMany).toHaveBeenCalled();
     });
 
-    it('should return bookmarks filtered by tabId', async () => {
+    it('should return bookmarks filtered by tabId using query builder', async () => {
       const mockBookmarks = [
         {
           id: '1',
@@ -84,17 +108,20 @@ describe('BookmarksService', () => {
           url: 'https://example.com',
           tabId: 'tab-1',
           groups: [],
+          tabs: [],
         },
       ];
-      mockBookmarkRepository.find.mockResolvedValue(mockBookmarks);
+      mockQueryBuilder.getMany.mockResolvedValue(mockBookmarks);
 
       const result = await service.findAll('tab-1');
 
       expect(result).toEqual(mockBookmarks);
-      expect(mockBookmarkRepository.find).toHaveBeenCalledWith({
-        where: { tabId: 'tab-1' },
-        relations: ['groups'],
-      });
+      expect(mockBookmarkRepository.createQueryBuilder).toHaveBeenCalledWith('bookmark');
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        '(bookmark.tabId = :tabId OR tabs.id = :tabId)',
+        { tabId: 'tab-1' }
+      );
+      expect(mockQueryBuilder.getMany).toHaveBeenCalled();
     });
   });
 
@@ -114,7 +141,7 @@ describe('BookmarksService', () => {
       expect(result).toEqual(mockBookmark);
       expect(mockBookmarkRepository.findOne).toHaveBeenCalledWith({
         where: { id: '1' },
-        relations: ['groups'],
+        relations: ['groups', 'tabs'],
       });
     });
 
@@ -207,6 +234,7 @@ describe('BookmarksService', () => {
         ...createDto,
         tabId: null,
         groups: [],
+        tabs: [],
       };
       const mockSavedBookmark = { id: 'new-id', ...createDto, tabId: null };
 
@@ -222,6 +250,87 @@ describe('BookmarksService', () => {
         name: createDto.name,
         url: createDto.url,
         tabId: null,
+      });
+    });
+
+    it('should create a bookmark with tabIds array (multiple tabs)', async () => {
+      const createDto: CreateBookmarkDto = {
+        name: 'New Bookmark',
+        url: 'https://example.com',
+        tabIds: ['tab-1', 'tab-2'],
+      };
+      const mockTabs = [
+        { id: 'tab-1', name: 'Tab 1', color: '#3b82f6' },
+        { id: 'tab-2', name: 'Tab 2', color: '#ef4444' },
+      ];
+      const mockCreatedBookmark = {
+        id: 'new-id',
+        name: createDto.name,
+        url: createDto.url,
+        tabId: 'tab-1', // First tab for backward compatibility
+        tabs: mockTabs,
+        groups: [],
+      };
+      const mockSavedBookmark = {
+        id: 'new-id',
+        name: createDto.name,
+        url: createDto.url,
+        tabId: 'tab-1',
+        tabs: mockTabs,
+      };
+
+      mockBookmarkRepository.create.mockReturnValue(mockSavedBookmark);
+      mockTabRepository.findBy.mockResolvedValue(mockTabs);
+      mockBookmarkRepository.save.mockResolvedValue(mockSavedBookmark);
+      mockBookmarkRepository.findOne.mockResolvedValue(mockCreatedBookmark);
+
+      const result = await service.create(createDto);
+
+      expect(result).toEqual(mockCreatedBookmark);
+      expect(mockTabRepository.findBy).toHaveBeenCalledWith({
+        id: In(['tab-1', 'tab-2']),
+      });
+      expect(mockBookmarkRepository.create).toHaveBeenCalledWith({
+        id: expect.any(String) as string,
+        name: createDto.name,
+        url: createDto.url,
+        tabId: null,
+      });
+    });
+
+    it('should create a bookmark with tabId (backward compatibility)', async () => {
+      const createDto: CreateBookmarkDto = {
+        name: 'New Bookmark',
+        url: 'https://example.com',
+        tabId: 'tab-1',
+      };
+      const mockTab = { id: 'tab-1', name: 'Tab 1', color: '#3b82f6' };
+      const mockCreatedBookmark = {
+        id: 'new-id',
+        name: createDto.name,
+        url: createDto.url,
+        tabId: 'tab-1',
+        tabs: [mockTab],
+        groups: [],
+      };
+      const mockSavedBookmark = {
+        id: 'new-id',
+        name: createDto.name,
+        url: createDto.url,
+        tabId: 'tab-1',
+        tabs: [mockTab],
+      };
+
+      mockBookmarkRepository.create.mockReturnValue(mockSavedBookmark);
+      mockTabRepository.findOne.mockResolvedValue(mockTab);
+      mockBookmarkRepository.save.mockResolvedValue(mockSavedBookmark);
+      mockBookmarkRepository.findOne.mockResolvedValue(mockCreatedBookmark);
+
+      const result = await service.create(createDto);
+
+      expect(result).toEqual(mockCreatedBookmark);
+      expect(mockTabRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 'tab-1' },
       });
     });
   });
@@ -321,6 +430,132 @@ describe('BookmarksService', () => {
         service.update('non-existent', { name: 'New Name' }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('should update bookmark with tabIds array (multiple tabs)', async () => {
+      const existingBookmark = {
+        id: '1',
+        name: 'Bookmark',
+        url: 'https://example.com',
+        tabId: 'tab-1',
+        groups: [],
+        tabs: [{ id: 'tab-1', name: 'Tab 1' }],
+      };
+      const updateDto: UpdateBookmarkDto = { tabIds: ['tab-1', 'tab-2'] };
+      const mockTabs = [
+        { id: 'tab-1', name: 'Tab 1', color: '#3b82f6' },
+        { id: 'tab-2', name: 'Tab 2', color: '#ef4444' },
+      ];
+      const updatedBookmark = {
+        ...existingBookmark,
+        tabs: mockTabs,
+        tabId: 'tab-1', // Original tabId preserved
+      };
+
+      mockBookmarkRepository.findOne
+        .mockResolvedValueOnce(existingBookmark)
+        .mockResolvedValueOnce(updatedBookmark);
+      mockTabRepository.findBy.mockResolvedValue(mockTabs);
+      mockBookmarkRepository.save.mockResolvedValue(updatedBookmark);
+
+      const result = await service.update('1', updateDto);
+
+      expect(result.tabs).toEqual(mockTabs);
+      expect(result.tabId).toBe('tab-1'); // Original tabId preserved
+      expect(mockTabRepository.findBy).toHaveBeenCalledWith({
+        id: In(['tab-1', 'tab-2']),
+      });
+    });
+
+    it('should update bookmark with tabIds array when original tabId not in new tabs', async () => {
+      const existingBookmark = {
+        id: '1',
+        name: 'Bookmark',
+        url: 'https://example.com',
+        tabId: 'tab-1',
+        groups: [],
+        tabs: [{ id: 'tab-1', name: 'Tab 1' }],
+      };
+      const updateDto: UpdateBookmarkDto = { tabIds: ['tab-2', 'tab-3'] };
+      const mockTabs = [
+        { id: 'tab-2', name: 'Tab 2', color: '#ef4444' },
+        { id: 'tab-3', name: 'Tab 3', color: '#10b981' },
+      ];
+      const updatedBookmark = {
+        ...existingBookmark,
+        tabs: mockTabs,
+        tabId: 'tab-2', // First tab from new array
+      };
+
+      mockBookmarkRepository.findOne
+        .mockResolvedValueOnce(existingBookmark)
+        .mockResolvedValueOnce(updatedBookmark);
+      mockTabRepository.findBy.mockResolvedValue(mockTabs);
+      mockBookmarkRepository.save.mockResolvedValue(updatedBookmark);
+
+      const result = await service.update('1', updateDto);
+
+      expect(result.tabs).toEqual(mockTabs);
+      expect(result.tabId).toBe('tab-2'); // First tab from new array
+    });
+
+    it('should clear tabs when empty tabIds array is provided', async () => {
+      const existingBookmark = {
+        id: '1',
+        name: 'Bookmark',
+        url: 'https://example.com',
+        tabId: 'tab-1',
+        groups: [],
+        tabs: [{ id: 'tab-1', name: 'Tab 1' }],
+      };
+      const updateDto: UpdateBookmarkDto = { tabIds: [] };
+      const updatedBookmark = {
+        ...existingBookmark,
+        tabs: [],
+        tabId: null,
+      };
+
+      mockBookmarkRepository.findOne
+        .mockResolvedValueOnce(existingBookmark)
+        .mockResolvedValueOnce(updatedBookmark);
+      mockBookmarkRepository.save.mockResolvedValue(updatedBookmark);
+
+      const result = await service.update('1', updateDto);
+
+      expect(result.tabs).toEqual([]);
+      expect(result.tabId).toBeNull();
+    });
+
+    it('should update bookmark with tabId (backward compatibility)', async () => {
+      const existingBookmark = {
+        id: '1',
+        name: 'Bookmark',
+        url: 'https://example.com',
+        tabId: 'tab-1',
+        groups: [],
+        tabs: [],
+      };
+      const updateDto: UpdateBookmarkDto = { tabId: 'tab-2' };
+      const mockTab = { id: 'tab-2', name: 'Tab 2', color: '#ef4444' };
+      const updatedBookmark = {
+        ...existingBookmark,
+        tabId: 'tab-2',
+        tabs: [mockTab],
+      };
+
+      mockBookmarkRepository.findOne
+        .mockResolvedValueOnce(existingBookmark)
+        .mockResolvedValueOnce(updatedBookmark);
+      mockTabRepository.findOne.mockResolvedValue(mockTab);
+      mockBookmarkRepository.save.mockResolvedValue(updatedBookmark);
+
+      const result = await service.update('1', updateDto);
+
+      expect(result.tabId).toBe('tab-2');
+      expect(result.tabs).toEqual([mockTab]);
+      expect(mockTabRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 'tab-2' },
+      });
+    });
   });
 
   describe('remove', () => {
@@ -339,7 +574,7 @@ describe('BookmarksService', () => {
 
       expect(mockBookmarkRepository.findOne).toHaveBeenCalledWith({
         where: { id: '1' },
-        relations: ['groups'],
+        relations: ['groups', 'tabs'],
       });
       expect(mockBookmarkRepository.remove).toHaveBeenCalledWith(mockBookmark);
     });
@@ -350,6 +585,16 @@ describe('BookmarksService', () => {
       await expect(service.remove('non-existent')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('removeAll', () => {
+    it('should remove all bookmarks', async () => {
+      mockBookmarkRepository.clear.mockResolvedValue(undefined);
+
+      await service.removeAll();
+
+      expect(mockBookmarkRepository.clear).toHaveBeenCalled();
     });
   });
 });
