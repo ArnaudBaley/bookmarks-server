@@ -24,9 +24,22 @@ export class TabsService {
   ) {}
 
   async findAll(): Promise<Tab[]> {
-    return this.tabRepository.find({
+    const tabs = await this.tabRepository.find({
       order: { createdAt: 'ASC' },
     });
+
+    // If no tabs exist, create a default tab
+    if (tabs.length === 0) {
+      const defaultTab = this.tabRepository.create({
+        id: uuidv4(),
+        name: 'Default',
+        color: '#3b82f6',
+      });
+      const savedTab = await this.tabRepository.save(defaultTab);
+      return [savedTab];
+    }
+
+    return tabs;
   }
 
   async findOne(id: string): Promise<Tab> {

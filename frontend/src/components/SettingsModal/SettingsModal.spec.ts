@@ -6,9 +6,18 @@ import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { useGroupStore } from '@/stores/group/group'
 import { useTabStore } from '@/stores/tab/tab'
 
+// Mock vue-router
+const mockReplace = vi.fn()
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    replace: mockReplace,
+  }),
+}))
+
 describe('SettingsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockReplace.mockClear()
   })
 
   it('renders settings modal', () => {
@@ -156,6 +165,7 @@ describe('SettingsModal', () => {
     vi.spyOn(bookmarkStore, 'deleteAllBookmarks').mockResolvedValue()
     vi.spyOn(groupStore, 'deleteAllGroups').mockResolvedValue()
     vi.spyOn(tabStore, 'deleteAllTabs').mockResolvedValue()
+    vi.spyOn(tabStore, 'fetchTabs').mockResolvedValue()
 
     // Click delete all data button
     const deleteButton = wrapper.findAll('button').find((btn) => btn.text().includes('Delete All Data') && !btn.text().includes('Deleting'))
@@ -165,7 +175,10 @@ describe('SettingsModal', () => {
     // Click confirm delete button
     const confirmButton = wrapper.findAll('button').find((btn) => btn.text() === 'Delete All Data' && btn.attributes('disabled') === undefined)
     await confirmButton!.trigger('click')
+    // Wait for all async operations to complete
     await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 10))
 
     expect(wrapper.emitted('cancel')).toBeTruthy()
   })

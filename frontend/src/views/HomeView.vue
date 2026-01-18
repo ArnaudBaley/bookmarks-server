@@ -65,6 +65,9 @@ watch(() => route.params.tabName, (tabName) => {
     } else if (tabStore.tabs.length > 0 && tabStore.tabs[0]) {
       // Tab doesn't exist, redirect to first tab
       router.replace({ name: 'tab', params: { tabName: encodeTabName(tabStore.tabs[0].name) } })
+    } else if (tabStore.tabs.length === 0) {
+      // No tabs exist, navigate to home
+      router.replace({ name: 'home' })
     }
   } else if (route.name === 'home') {
     // On home route, redirect to first tab if tabs exist
@@ -90,6 +93,11 @@ watch(() => tabStore.tabs.length, () => {
     } else if (route.name === 'home' && tabStore.tabs[0]) {
       // On home route, redirect to first tab
       router.replace({ name: 'tab', params: { tabName: encodeTabName(tabStore.tabs[0].name) } })
+    }
+  } else {
+    // No tabs exist, navigate to home route
+    if (route.name === 'tab') {
+      router.replace({ name: 'home' })
     }
   }
 })
@@ -133,10 +141,10 @@ onMounted(async () => {
 async function handleAddBookmark(data: CreateBookmarkDto) {
   try {
     if (!tabStore.activeTabId) {
-      console.error('No active tab selected')
-      // Still close the form even if there's an error
+      // No active tab - close bookmark form and open add tab form to guide user
       showAddForm.value = false
       selectedGroupIdForBookmark.value = null
+      showAddTabForm.value = true
       return
     }
     await bookmarkStore.addBookmark({
@@ -189,7 +197,7 @@ async function handleDeleteFromEditForm(id: string) {
 async function handleDuplicateBookmark(bookmark: Bookmark) {
   try {
     const createData: CreateBookmarkDto = {
-      name: `${bookmark.name} copy`,
+      name: bookmark.name,
       url: bookmark.url,
       tabIds: bookmark.tabIds || (bookmark.tabId ? [bookmark.tabId] : []),
       groupIds: bookmark.groupIds || [],
@@ -212,9 +220,9 @@ async function handleDeleteBookmark(id: string) {
 async function handleAddGroup(data: CreateGroupDto) {
   try {
     if (!tabStore.activeTabId) {
-      console.error('No active tab selected')
-      // Still close the form even if there's an error
+      // No active tab - close group form and open add tab form to guide user
       showAddGroupForm.value = false
+      showAddTabForm.value = true
       return
     }
     await groupStore.addGroup({
@@ -259,7 +267,7 @@ async function handleDuplicateGroup(group: Group) {
     }
     // Create the new group
     const newGroup = await groupStore.addGroup({
-      name: `${group.name} copy`,
+      name: group.name,
       color: group.color,
       tabId: tabStore.activeTabId,
     })
@@ -274,7 +282,7 @@ async function handleDuplicateGroup(group: Group) {
     // Duplicate each bookmark and assign it only to the new group
     for (const bookmark of bookmarksInGroup) {
       await bookmarkStore.addBookmark({
-        name: `${bookmark.name} copy`,
+        name: bookmark.name,
         url: bookmark.url,
         tabIds: bookmark.tabIds || (bookmark.tabId ? [bookmark.tabId] : []),
         groupIds: [newGroup.id],
@@ -344,11 +352,36 @@ async function handleDeleteTab(id: string) {
   }
 }
 
+function generateUniqueTabName(baseName: string): string {
+  // Check if base name already exists
+  if (!tabStore.getTabByName(baseName)) {
+    return baseName
+  }
+  
+  // Try with " copy" suffix
+  let candidateName = `${baseName} copy`
+  if (!tabStore.getTabByName(candidateName)) {
+    return candidateName
+  }
+  
+  // Try with numbered suffix
+  let counter = 2
+  do {
+    candidateName = `${baseName} copy ${counter}`
+    counter++
+  } while (tabStore.getTabByName(candidateName))
+  
+  return candidateName
+}
+
 async function handleDuplicateTab(tab: Tab) {
   try {
+    // Generate a unique name for the duplicated tab
+    const uniqueName = generateUniqueTabName(tab.name)
+    
     // Create the new tab
     const newTab = await tabStore.addTab({
-      name: `${tab.name} copy`,
+      name: uniqueName,
       color: tab.color || undefined,
     })
     
@@ -365,7 +398,7 @@ async function handleDuplicateTab(tab: Tab) {
     // Duplicate each group and create the mapping
     for (const group of originalGroups) {
       const newGroup = await groupStore.addGroup({
-        name: `${group.name} copy`,
+        name: group.name,
         color: group.color,
         tabId: newTab.id,
       })
@@ -385,7 +418,7 @@ async function handleDuplicateTab(tab: Tab) {
         : []
       
       await bookmarkStore.addBookmark({
-        name: `${bookmark.name} copy`,
+        name: bookmark.name,
         url: bookmark.url,
         tabIds: [newTab.id],
         groupIds: newGroupIds,
@@ -574,7 +607,8 @@ async function handleUngroupedDrop(event: DragEvent) {
 
   try {
     if (!tabStore.activeTabId) {
-      console.error('No active tab selected')
+      // No active tab - open add tab form to guide user
+      showAddTabForm.value = true
       return
     }
     await bookmarkStore.addBookmark({
@@ -651,7 +685,7 @@ function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null
     </div>
 
     <!-- Tab Switcher -->
-    <TabSwitcher v-if="tabStore.tabs.length > 0" @tab-edit="handleModifyTab" @tab-add="showAddTabForm = true" />
+    <TabSwitcher @tab-edit="handleModifyTab" @tab-add="showAddTabForm = true" />
 
     <!-- Fold/Unfold All Groups Controls -->
     <div v-if="filteredGroups.length > 0 || ungroupedBookmarks.length > 0" class="mb-4 flex justify-center gap-2">

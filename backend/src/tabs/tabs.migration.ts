@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,7 +7,7 @@ import { Group } from '../entities/group.entity';
 import { Bookmark } from '../entities/bookmark.entity';
 
 @Injectable()
-export class TabsMigration implements OnModuleInit {
+export class TabsMigration implements OnApplicationBootstrap {
   constructor(
     @InjectRepository(Tab)
     private tabRepository: Repository<Tab>,
@@ -17,7 +17,7 @@ export class TabsMigration implements OnModuleInit {
     private bookmarkRepository: Repository<Bookmark>,
   ) {}
 
-  async onModuleInit() {
+  async onApplicationBootstrap() {
     await this.migrateExistingData();
   }
 

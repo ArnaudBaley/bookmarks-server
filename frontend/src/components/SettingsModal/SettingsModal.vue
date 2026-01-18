@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useThemeStore } from '@/stores/theme/theme'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { useGroupStore } from '@/stores/group/group'
@@ -12,6 +13,7 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
+const router = useRouter()
 const themeStore = useThemeStore()
 const bookmarkStore = useBookmarkStore()
 const groupStore = useGroupStore()
@@ -66,6 +68,12 @@ async function handleDeleteConfirm() {
     await bookmarkStore.deleteAllBookmarks()
     await groupStore.deleteAllGroups()
     await tabStore.deleteAllTabs()
+    
+    // Refetch tabs to ensure state synchronization
+    await tabStore.fetchTabs()
+    
+    // Navigate to home route to clear any stale tab route parameters
+    router.replace({ name: 'home' })
     
     // Close confirmation and modal
     showDeleteConfirmation.value = false
