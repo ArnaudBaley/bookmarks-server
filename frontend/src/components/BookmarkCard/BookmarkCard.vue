@@ -84,7 +84,7 @@ function getFaviconUrl(url: string): string {
   <div
     ref="cardRef"
     draggable="true"
-    class="flex flex-row items-center gap-3 p-3 w-72 border border-[var(--color-border)] rounded-lg bg-[var(--color-background-soft)] transition-[transform,box-shadow] duration-200 cursor-move hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
+    class="inline-flex flex-row items-center gap-3 p-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-background-soft)] transition-[transform,box-shadow] duration-200 cursor-move hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
     @click="handleClick"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
@@ -97,8 +97,8 @@ function getFaviconUrl(url: string): string {
     >
       <img :src="getFaviconUrl(bookmark.url)" :alt="`${bookmark.name} icon`" class="w-full h-full object-contain" />
     </div>
-    <div class="flex-1 min-w-0">
-      <h3 class="m-0 text-base font-medium break-words text-[var(--color-text)]">
+    <div class="flex-shrink-0">
+      <h3 class="m-0 text-base font-medium whitespace-nowrap text-[var(--color-text)]">
         {{ bookmark.name }}
       </h3>
     </div>

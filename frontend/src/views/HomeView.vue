@@ -787,7 +787,7 @@ function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null
           @dragleave="handleUngroupedDragLeave"
           @drop="handleUngroupedDrop"
         >
-          <div class="grid grid-cols-[repeat(auto-fill,minmax(288px,1fr))] gap-3">
+          <div class="flex flex-wrap gap-4">
             <BookmarkCard
               v-for="bookmark in ungroupedBookmarks"
               :key="bookmark.id"
