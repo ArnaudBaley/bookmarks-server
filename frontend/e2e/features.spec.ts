@@ -2690,4 +2690,3 @@ test.describe('Keyboard Navigation', () => {
     await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeHidden()
   })
 })
-

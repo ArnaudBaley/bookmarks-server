@@ -225,4 +225,3 @@ export function createTabArray(count: number): Tab[] {
     })
   )
 }
-
