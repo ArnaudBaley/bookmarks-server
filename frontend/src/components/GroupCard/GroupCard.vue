@@ -199,7 +199,8 @@ async function handleDrop(event: DragEvent) {
 
 <template>
   <div
-    class="mb-6 rounded-lg bg-[var(--color-background-soft)] overflow-hidden transition-all duration-200"
+    data-drop-zone="group"
+    class="mb-6 rounded-lg bg-[var(--color-background-soft)] overflow-hidden transition-all duration-200 group-card"
     :class="isDragOver ? 'border-2' : 'border border-[var(--color-border)]'"
     :style="isDragOver ? { borderColor: group.color } : {}"
     @dragover="handleDragOver"

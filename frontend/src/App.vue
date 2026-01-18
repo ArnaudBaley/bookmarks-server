@@ -2,8 +2,10 @@
 import { ref } from 'vue'
 import { RouterView } from 'vue-router'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
+import { useTabStore } from '@/stores/tab/tab'
 
 const bookmarkStore = useBookmarkStore()
+const tabStore = useTabStore()
 const isDraggingOver = ref(false)
 
 function normalizeUrl(urlString: string): string {
@@ -43,6 +45,17 @@ function extractNameFromUrl(urlString: string): string {
 }
 
 function handleDragOver(event: DragEvent) {
+  // Check if the drag is over a specific drop zone (like Ungrouped or GroupCard)
+  // If so, don't handle it here
+  const target = event.target as HTMLElement
+  if (target) {
+    const specificDropZone = target.closest('[data-drop-zone]')
+    if (specificDropZone) {
+      // This is a specific drop zone, don't handle it here
+      return
+    }
+  }
+  
   event.preventDefault()
   event.stopPropagation()
   if (event.dataTransfer) {
@@ -64,6 +77,21 @@ function handleDragLeave(event: DragEvent) {
 }
 
 async function handleDrop(event: DragEvent) {
+  // Check if the drop target is a specific drop zone (like Ungrouped or GroupCard)
+  // If so, let that zone handle it instead
+  const target = event.target as HTMLElement
+  if (target) {
+    // Check if the target or any parent has a specific drop handler
+    // (Ungrouped section or GroupCard components)
+    // Use closest to find any parent with data-drop-zone attribute
+    const specificDropZone = target.closest('[data-drop-zone]')
+    if (specificDropZone) {
+      // This is a specific drop zone, don't handle it here
+      // The specific zone will handle it
+      return
+    }
+  }
+
   event.preventDefault()
   event.stopPropagation()
   isDraggingOver.value = false
@@ -112,11 +140,18 @@ async function handleDrop(event: DragEvent) {
   // Extract name from URL
   const name = extractNameFromUrl(normalizedUrl)
 
-  // Create bookmark
+  // Create bookmark without any groups (ungrouped)
   try {
+    if (!tabStore.activeTabId) {
+      // No active tab - can't create bookmark
+      console.warn('No active tab selected, cannot create bookmark')
+      return
+    }
     await bookmarkStore.addBookmark({
       name,
       url: normalizedUrl,
+      tabId: tabStore.activeTabId,
+      groupIds: [], // Explicitly set to empty array to ensure it's ungrouped
     })
   } catch (error) {
     console.error('Failed to add bookmark:', error)

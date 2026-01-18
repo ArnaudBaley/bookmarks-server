@@ -312,9 +312,11 @@ test.describe('Bookmark Management', () => {
     // Open edit mode - click options button first
     await page.getByLabel('Options').first().click()
     // Wait for delete button to be visible (edit mode activated)
+    await expect(page.getByRole('button', { name: 'Delete bookmark' }).first()).toBeVisible()
+    
+    // Click delete button (delete button is visible in edit mode)
     // Use .first() to get the actual delete button, not the bookmark card
     const deleteButton = page.getByRole('button', { name: 'Delete bookmark' }).first()
-    await deleteButton.waitFor({ state: 'visible', timeout: 1000 })
     await deleteButton.click()
 
     // Wait for bookmark to be deleted from localStorage
@@ -329,7 +331,8 @@ test.describe('Bookmark Management', () => {
       }
     }, { timeout: 5000 })
 
-    // Verify bookmark is removed from UI
+    // Wait for UI to update - verify bookmark is removed
+    await expect(page.getByText('Bookmark to Delete')).toBeHidden({ timeout: 5000 })
     await expect(page.getByText('Bookmark to Delete')).toBeHidden({ timeout: 5000 })
 
     // Verify bookmark was removed from localStorage

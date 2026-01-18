@@ -754,6 +754,7 @@ function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null
     <div v-else>
       <!-- Ungrouped Bookmarks - Always displayed -->
       <div
+        data-drop-zone="ungrouped"
         class="mb-6 transition-all duration-200"
         :class="{ 'ring-2 ring-offset-2 ring-blue-500': isDragOverUngrouped }"
         @dragover="handleUngroupedDragOver"
