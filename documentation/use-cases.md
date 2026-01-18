@@ -272,19 +272,36 @@ This document describes all user-facing features and use cases of the bookmarks 
 **Export Format**: JSON file with complete application state
 
 #### 6.2 Import Bookmarks
-**User Story**: As a user, I want to import bookmarks from a previously exported file.
+**User Story**: As a user, I want to import bookmarks from a previously exported file or browser bookmarks.
 
-**Steps**:
+**Import Types**:
+
+**JSON Import**:
 1. Click the settings icon
 2. Click "Import" in the export/import modal
-3. Select a JSON file from previous export
-4. Data is imported and replaces current data
+3. Select "JSON" as import type
+4. Select a JSON file from previous export
+5. Data is imported and replaces current data
 
-**Warning**: Importing replaces all existing data. Consider exporting first as backup.
+**Warning**: JSON import replaces all existing data. Consider exporting first as backup.
+
+**HTML Import (Browser Bookmarks)**:
+1. Click the settings icon
+2. Click "Import" in the export/import modal
+3. Select "HTML (Browser Bookmarks)" as import type
+4. Select an HTML file exported from your browser
+5. A new tab is created with the imported bookmarks
+6. Existing data is preserved
+
+**Features**:
+- HTML import preserves existing data by creating a new tab
+- Supports browser bookmark HTML format (Netscape format)
+- Automatically creates groups from bookmark folders
+- Tab name is derived from the HTML filename
 
 **Validation**:
-- File must be valid JSON
-- File must match expected data structure
+- JSON: File must be valid JSON and match expected data structure
+- HTML: File must be valid HTML bookmark format
 
 ### 7. Color Customization
 
@@ -308,33 +325,110 @@ This document describes all user-facing features and use cases of the bookmarks 
 
 **Purpose**: Visual organization and quick identification of groups
 
-### 8. Keyboard Navigation
+### 8. Search Functionality
 
-#### 8.1 Form Navigation
+#### 8.1 Search Tabs and Bookmarks
+**User Story**: As a user, I want to quickly search for tabs and bookmarks without manually browsing.
+
+**Steps**:
+1. Press `Ctrl+K` (or `Cmd+K` on Mac) to open the search modal
+2. Type a search query (searches tab names and bookmark names)
+3. Use arrow keys to navigate results:
+   - `Arrow Down`: Move to next result
+   - `Arrow Up`: Move to previous result
+4. Press `Enter` to select a result:
+   - If a bookmark: Opens in a new browser tab
+   - If a tab: Navigates to that tab
+5. Press `Escape` to close the search modal
+
+**Features**:
+- Real-time search as you type
+- Searches across all tabs and bookmarks
+- Visual indicators distinguish tabs from bookmarks
+- Keyboard-only navigation supported
+- Click on results as alternative to keyboard navigation
+
+**Alternative Access**:
+- Click the "CTRL+K" button at the top of the page
+
+### 9. Duplicate Operations
+
+#### 9.1 Duplicate Bookmark
+**User Story**: As a user, I want to duplicate a bookmark to create a copy with a different name or URL.
+
+**Steps**:
+1. Click the edit button on a bookmark card
+2. Click the duplicate button in the edit form
+3. A new bookmark is created with the same properties
+4. The new bookmark can be edited immediately
+
+**Features**:
+- Creates an exact copy of the bookmark
+- Preserves all group and tab assignments
+- New bookmark appears in the same location as the original
+
+#### 9.2 Duplicate Group
+**User Story**: As a user, I want to duplicate a group along with its bookmarks to create a similar group structure.
+
+**Steps**:
+1. Click the edit button on a group
+2. Click the duplicate button in the edit form
+3. A new group is created with the same name (with "copy" suffix if needed)
+4. All bookmarks in the original group are duplicated and assigned to the new group
+
+**Features**:
+- Creates a new group with the same name and color
+- Automatically generates unique name if duplicate exists (adds "copy" or "copy N")
+- Duplicates all bookmarks from the original group
+- New group appears in the same tab
+
+#### 9.3 Duplicate Tab
+**User Story**: As a user, I want to duplicate an entire tab with all its groups and bookmarks.
+
+**Steps**:
+1. Click the edit button on a tab
+2. Click the duplicate button in the edit form
+3. A new tab is created with a unique name
+4. All groups from the original tab are duplicated
+5. All bookmarks are duplicated and assigned to the corresponding new groups
+6. Application navigates to the newly created tab
+
+**Features**:
+- Creates a complete copy of the tab structure
+- Preserves group hierarchy and colors
+- Maintains bookmark-to-group relationships
+- Automatically generates unique tab name
+- All relationships are properly mapped to new entities
+
+### 10. Keyboard Navigation
+
+#### 10.1 Form Navigation
 **User Story**: As a user, I want to use keyboard shortcuts for common actions.
 
 **Current Shortcuts**:
+- `Ctrl+K` (or `Cmd+K` on Mac): Open search modal
 - `Escape`: Close modal/form
 - `Enter`: Submit form (when focused on input)
+- `Arrow Keys` (in SearchModal): Navigate search results
 
 **Planned Shortcuts**:
 - `Ctrl+Shift`: Switch to next tab
 
-### 9. Empty States
+### 11. Empty States
 
-#### 9.1 No Bookmarks
+#### 11.1 No Bookmarks
 **User Story**: As a user, I want to see a helpful message when I have no bookmarks.
 
 **Display**: Empty state message encouraging user to add their first bookmark
 
-#### 9.2 Empty Group
+#### 11.2 Empty Group
 **User Story**: As a user, I want to see a message when a group has no bookmarks.
 
 **Display**: Empty state message within the group indicating no bookmarks
 
-### 10. Data Persistence
+### 12. Data Persistence
 
-#### 10.1 Automatic Save
+#### 12.1 Automatic Save
 **User Story**: As a user, I want my changes to be automatically saved.
 
 **Behavior**:
@@ -343,7 +437,7 @@ This document describes all user-facing features and use cases of the bookmarks 
 - Changes persist across page reloads
 - No manual save action required
 
-#### 10.2 Loading States
+#### 12.2 Loading States
 **User Story**: As a user, I want visual feedback when data is being loaded or saved.
 
 **Features**:
@@ -370,6 +464,20 @@ This document describes all user-facing features and use cases of the bookmarks 
 2. Store backup file securely
 3. When needed, import backup to restore data
 4. Or import into a different instance of the application
+
+### Workflow 5: Import Browser Bookmarks
+1. Export bookmarks from your browser as HTML file
+2. Open settings in the bookmarks application
+3. Select "HTML (Browser Bookmarks)" import type
+4. Select the exported HTML file
+5. A new tab is created with all imported bookmarks and folders
+6. Existing data remains intact
+
+### Workflow 6: Duplicate Tab Structure
+1. Create a tab with groups and bookmarks as a template
+2. Edit the tab and click duplicate
+3. A new tab is created with all groups and bookmarks copied
+4. Modify the duplicated tab as needed
 
 ### Workflow 4: Theme Customization
 1. Application detects system theme preference

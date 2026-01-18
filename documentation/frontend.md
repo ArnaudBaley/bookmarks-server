@@ -34,6 +34,7 @@ frontend/
 │   │   ├── EditTabForm/
 │   │   ├── SettingsModal/
 │   │   ├── ExportImportModal/
+│   │   ├── SearchModal/
 │   │   └── ThemeToggle/
 │   ├── stores/              # Pinia stores for state management
 │   │   ├── bookmark/
@@ -86,6 +87,8 @@ frontend/
 - **Features**:
   - Pre-filled form with existing bookmark data
   - Update and cancel actions
+  - Duplicate bookmark functionality
+  - Tab and group assignment with nested UI
 
 ### Group Components
 
@@ -103,6 +106,7 @@ frontend/
 - **Features**:
   - Name and color selection
   - Color picker and palette buttons
+  - Duplicate group functionality (EditGroupForm)
 
 ### Tab Components
 
@@ -120,6 +124,7 @@ frontend/
 - **Features**:
   - Name and color selection
   - Unique name validation
+  - Duplicate tab functionality (EditTabForm)
 
 ### Utility Components
 
@@ -134,8 +139,22 @@ frontend/
 - **Location**: `src/components/ExportImportModal/ExportImportModal.vue`
 - **Purpose**: Export and import bookmarks data
 - **Features**:
-  - JSON export/import
+  - JSON export/import (replaces all data)
+  - HTML import from browser bookmarks (creates new tab, preserves existing data)
   - File upload/download
+  - Import type selection (JSON or HTML)
+
+#### SearchModal
+- **Location**: `src/components/SearchModal/SearchModal.vue`
+- **Purpose**: Search tabs and bookmarks across the application
+- **Features**:
+  - Real-time search as you type
+  - Searches both tab names and bookmark names
+  - Keyboard navigation (Arrow keys to navigate, Enter to select)
+  - Opens bookmarks in new tab when selected
+  - Navigates to tabs when selected
+  - Accessible via Ctrl+K (or Cmd+K on Mac) keyboard shortcut
+  - Visual indicators for tabs vs bookmarks
 
 #### ThemeToggle
 - **Location**: `src/components/ThemeToggle/ThemeToggle.vue`
@@ -273,11 +292,32 @@ The API services use a factory pattern to support both mock and HTTP implementat
 - Theme toggle persists preference
 - System preference detection on first load
 
+## Keyboard Shortcuts
+
+The application supports keyboard shortcuts for improved productivity:
+
+- **Ctrl+K (or Cmd+K on Mac)**: Open search modal to quickly find tabs and bookmarks
+- **Escape**: Close modals, forms, or dialogs
+- **Enter**: Submit forms when focused on input fields
+- **Arrow Keys (in SearchModal)**: Navigate search results
+  - **Arrow Down**: Move to next result
+  - **Arrow Up**: Move to previous result
+  - **Enter**: Select highlighted result
+
+### Keyboard Shortcut Implementation
+
+- **Location**: `src/composables/useKeyboardShortcut.ts`
+- **Purpose**: Reusable composable for managing keyboard shortcuts
+- **Features**:
+  - Supports Ctrl/Cmd, Shift, Alt, and Meta modifiers
+  - Cross-platform support (Windows/Linux Ctrl, Mac Cmd)
+  - Prevents default behavior when needed
+
 ## Drag and Drop
 
 The application supports drag-and-drop functionality for creating bookmarks:
 
-- **Location**: `src/App.vue`
+- **Location**: `src/App.vue`, `src/views/HomeView.vue`
 - **Features**:
   - Drop URLs from browser address bar
   - Drop links from web pages
@@ -285,6 +325,8 @@ The application supports drag-and-drop functionality for creating bookmarks:
   - URL validation
   - Visual feedback during drag (ring highlight)
   - Automatic name extraction from URL
+  - Move bookmarks between groups by dragging
+  - Remove bookmarks from groups by dragging to ungrouped section
 
 ## Testing
 
@@ -341,6 +383,10 @@ npm run type-check  # TypeScript type checking
 3. **Component Reusability**: Modular component architecture
 4. **API Abstraction**: Mock/HTTP implementations for flexible development
 5. **Theme Support**: Light/dark mode with persistence
-6. **Drag & Drop**: Intuitive bookmark creation
+6. **Drag & Drop**: Intuitive bookmark creation and organization
 7. **Form Validation**: Client-side validation with error handling
 8. **Responsive Design**: Tailwind CSS for responsive layouts
+9. **Search Functionality**: Quick search with Ctrl+K keyboard shortcut
+10. **Duplicate Operations**: Duplicate bookmarks, groups, and tabs with unique name generation
+11. **HTML Import**: Import browser bookmarks from HTML files
+12. **Keyboard Navigation**: Full keyboard support for accessibility and productivity
