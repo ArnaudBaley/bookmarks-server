@@ -175,7 +175,7 @@ describe('BookmarkCard', () => {
     })
 
     const card = wrapper.find('[role="button"]')
-    expect(card.classes()).toContain('inline-flex')
+    expect(card.classes()).toContain('flex')
     expect(card.classes()).toContain('flex-row')
   })
 

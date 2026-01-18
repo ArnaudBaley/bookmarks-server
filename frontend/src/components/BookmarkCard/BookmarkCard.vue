@@ -84,7 +84,7 @@ function getFaviconUrl(url: string): string {
   <div
     ref="cardRef"
     draggable="true"
-    class="inline-flex flex-row items-center gap-3 p-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-background-soft)] transition-[transform,box-shadow] duration-200 cursor-move hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
+    class="flex flex-row items-center gap-3 p-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-background-soft)] transition-[transform,box-shadow] duration-200 cursor-move hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
     @click="handleClick"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"

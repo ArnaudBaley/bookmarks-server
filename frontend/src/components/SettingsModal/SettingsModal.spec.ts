@@ -178,6 +178,7 @@ describe('SettingsModal', () => {
     // Wait for all async operations to complete
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    // Wait a bit more for the cancel event to be emitted
     await new Promise(resolve => setTimeout(resolve, 10))
 
     expect(wrapper.emitted('cancel')).toBeTruthy()

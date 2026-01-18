@@ -16,6 +16,8 @@ import TabSwitcher from '@/components/TabSwitcher/TabSwitcher.vue'
 import AddTabForm from '@/components/AddTabForm/AddTabForm.vue'
 import EditTabForm from '@/components/EditTabForm/EditTabForm.vue'
 import SettingsModal from '@/components/SettingsModal/SettingsModal.vue'
+import SearchModal from '@/components/SearchModal/SearchModal.vue'
+import { useKeyboardShortcut } from '@/composables/useKeyboardShortcut'
 import type { CreateBookmarkDto, UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
 import type { CreateGroupDto, UpdateGroupDto, Group } from '@/types/group'
 import type { CreateTabDto, UpdateTabDto, Tab } from '@/types/tab'
@@ -30,6 +32,7 @@ const showAddForm = ref(false)
 const showAddGroupForm = ref(false)
 const showAddTabForm = ref(false)
 const showSettingsModal = ref(false)
+const showSearchModal = ref(false)
 const editingBookmark = ref<Bookmark | null>(null)
 const editingGroup = ref<Group | null>(null)
 const editingTab = ref<Tab | null>(null)
@@ -40,6 +43,19 @@ const groupCardRefs = ref<Map<string, InstanceType<typeof GroupCard>>>(new Map()
 
 const ungroupedBookmarks = computed(() => groupStore.getUngroupedBookmarks())
 const filteredGroups = computed(() => groupStore.filteredGroups)
+
+// Handle CTRL+K shortcut to show search modal
+useKeyboardShortcut({
+  key: 'k',
+  ctrl: true,
+  callback: () => {
+    showSearchModal.value = true
+  },
+})
+
+function handleSearchModalClose(): void {
+  showSearchModal.value = false
+}
 
 // Helper function to decode tab name from URL
 function decodeTabName(encodedName: string): string {
@@ -658,7 +674,14 @@ function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null
     class="w-full max-w-[1200px] mx-auto p-8 md:p-4"
   >
     <div class="flex justify-between items-center mb-8">
-      <h1 class="m-0 text-[var(--color-text)]">My Bookmarks</h1>
+      <button
+        class="px-3 py-1.5 text-sm text-[var(--color-text)] bg-[var(--color-background-soft)] border border-[var(--color-border)] rounded cursor-pointer font-mono hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] transition-colors duration-200 shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
+        @click="showSearchModal = true"
+        aria-label="Open search modal"
+        title="Press CTRL+K to search"
+      >
+        CTRL+ K
+      </button>
       <div class="flex gap-4 items-center">
         <button
           class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-background-soft)] text-[var(--color-text)] cursor-pointer flex items-center justify-center transition-[transform,background-color,border-color] duration-200 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-[var(--color-background-mute)] hover:border-[var(--color-border-hover)] active:scale-95"
@@ -683,6 +706,8 @@ function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null
         </button>
       </div>
     </div>
+
+    <h1 class="text-2xl font-bold text-[var(--color-text)] mb-6">My Bookmarks</h1>
 
     <!-- Tab Switcher -->
     <TabSwitcher @tab-edit="handleModifyTab" @tab-add="showAddTabForm = true" />
@@ -905,5 +930,6 @@ function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null
       @cancel="() => { editingTab = null; tabStore.error = null }"
     />
     <SettingsModal v-if="showSettingsModal" @cancel="showSettingsModal = false" />
+    <SearchModal v-if="showSearchModal" @close="handleSearchModalClose" />
   </main>
 </template>
