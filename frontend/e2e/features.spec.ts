@@ -311,12 +311,11 @@ test.describe('Bookmark Management', () => {
 
     // Open edit mode - click options button first
     await page.getByLabel('Options').first().click()
-    // Wait a bit for edit mode to be fully activated
-    await page.waitForTimeout(100)
+    // Wait for edit mode to be fully activated by waiting for delete button to be visible
+    const deleteButton = page.getByRole('button', { name: 'Delete bookmark' }).first()
+    await expect(deleteButton).toBeVisible()
     
     // Click delete button (delete button is visible in edit mode)
-    // Use .first() to get the actual delete button, not the bookmark card
-    const deleteButton = page.getByRole('button', { name: 'Delete bookmark' }).first()
     await deleteButton.click()
 
     // Wait for bookmark to be deleted from localStorage
@@ -330,9 +329,6 @@ test.describe('Bookmark Management', () => {
         return false
       }
     }, { timeout: 5000 })
-
-    // Wait a bit for UI to update
-    await page.waitForTimeout(200)
 
     // Verify bookmark is removed from UI
     await expect(page.getByText('Bookmark to Delete')).toBeHidden({ timeout: 5000 })
@@ -1512,9 +1508,6 @@ test.describe('Export/Import Functionality', () => {
     const fileInput = page.locator('input[type="file"]')
     await fileInput.setInputFiles(tempFile)
     
-    // Wait a bit for file processing to start
-    await page.waitForTimeout(500)
-    
     // Wait for error message (appears after file processing)
     await expect(page.getByText(/Failed to parse or validate file|Failed to read file/i)).toBeVisible({ timeout: 10000 })
 
@@ -2153,9 +2146,6 @@ test.describe('Tab Color Selection', () => {
     await page.getByRole('button', { name: 'Update Tab' }).click()
     await expect(page.getByRole('heading', { name: 'Edit Tab' })).toBeHidden()
 
-    // Wait a bit for the update to complete
-    await page.waitForTimeout(500)
-
     // Verify color was saved - increase timeout since API call may take time
     await page.waitForFunction(() => {
       const stored = localStorage.getItem('tabs-mock-data')
@@ -2347,9 +2337,6 @@ test.describe('Drag and Drop Edge Cases', () => {
     // Drag bookmark to target group
     await bookmarkCard.dragTo(targetGroup)
 
-    // Wait a bit for the drag operation to complete
-    await page.waitForTimeout(500)
-
     // Wait for bookmark to be moved - increase timeout since API calls may take time
     await page.waitForFunction(() => {
       const stored = localStorage.getItem('bookmarks-mock-data')
@@ -2534,9 +2521,6 @@ test.describe('Duplicate Functionality', () => {
     // Click duplicate button
     const duplicateButton = page.getByRole('button', { name: 'Duplicate tab' })
     await duplicateButton.click()
-
-    // Wait a bit for the duplicate operation to start
-    await page.waitForTimeout(500)
 
     // Wait for duplicate to be created (this may take longer as it duplicates groups and bookmarks too)
     await page.waitForFunction(() => {
