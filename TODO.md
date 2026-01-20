@@ -15,12 +15,11 @@
 
 # Features
 
-- As a user, I can edit a bookmark and select the groups it can belongs to.
-I also want the user to choose the tabs.
-You will have to display a list tabs with a nested list of each tab's groups.
-Each group can be copy or moved to another tab
+- As a user, I can already edit a bookmark and select the groups it can belongs to.
+I want the user to use the same mecanism for copying groups in other tabs.
 
-- User must be able to sort manually sections
+- User must be able to sort manually bookmarks in a group (by drag and drop)
+- User must be able to sort manually sections (by drag and drop)
 
 
 # Dev tool

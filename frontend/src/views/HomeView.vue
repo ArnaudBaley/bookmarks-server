@@ -16,8 +16,9 @@ import TabSwitcher from '@/components/TabSwitcher/TabSwitcher.vue'
 import AddTabForm from '@/components/AddTabForm/AddTabForm.vue'
 import EditTabForm from '@/components/EditTabForm/EditTabForm.vue'
 import SettingsModal from '@/components/SettingsModal/SettingsModal.vue'
-import SearchModal from '@/components/SearchModal/SearchModal.vue'
+import CommandPalette from '@/components/CommandPalette/CommandPalette.vue'
 import { useKeyboardShortcut } from '@/composables/useKeyboardShortcut'
+import { useExportData } from '@/composables/useExportData'
 import type { CreateBookmarkDto, UpdateBookmarkDto, Bookmark } from '@/types/bookmark'
 import type { CreateGroupDto, UpdateGroupDto, Group } from '@/types/group'
 import type { CreateTabDto, UpdateTabDto, Tab } from '@/types/tab'
@@ -27,6 +28,7 @@ const route = useRoute()
 const bookmarkStore = useBookmarkStore()
 const groupStore = useGroupStore()
 const tabStore = useTabStore()
+const { exportUserData } = useExportData()
 
 const showAddForm = ref(false)
 const showAddGroupForm = ref(false)
@@ -930,6 +932,15 @@ function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null
       @cancel="() => { editingTab = null; tabStore.error = null }"
     />
     <SettingsModal v-if="showSettingsModal" @cancel="showSettingsModal = false" />
-    <SearchModal v-if="showSearchModal" @close="handleSearchModalClose" />
+    <CommandPalette
+      v-if="showSearchModal"
+      :on-fold-all-groups="foldAllGroups"
+      :on-unfold-all-groups="unfoldAllGroups"
+      :on-create-bookmark="() => { showAddForm = true }"
+      :on-create-group="() => { showAddGroupForm = true }"
+      :on-create-tab="() => { showAddTabForm = true }"
+      :on-backup-data="exportUserData"
+      @close="handleSearchModalClose"
+    />
   </main>
 </template>

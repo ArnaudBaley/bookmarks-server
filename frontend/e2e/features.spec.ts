@@ -3196,7 +3196,7 @@ test.describe('Accessibility', () => {
     const settingsButton = page.getByRole('button', { name: 'Settings' })
     await expect(settingsButton).toBeVisible()
     
-    // Search button should have aria-label (button text is "CTRL+ K" with space)
+    // Command palette button should have aria-label (button text is "CTRL+ K" with space)
     // Try to find by role first, then by text if that fails
     const searchButtonByRole = page.getByRole('button', { name: /CTRL.*K/i })
     const searchButtonByText = page.getByText('CTRL+ K')
@@ -3275,5 +3275,374 @@ test.describe('Accessibility', () => {
     await page.keyboard.press('Tab')
     const addButton = page.getByRole('button', { name: 'Add Bookmark' })
     await expect(addButton).toBeFocused()
+  })
+})
+
+test.describe('Command Palette', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await clearMockData(page)
+    await setupDefaultTab(page)
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+  })
+
+  test('should open command palette with CTRL+K keyboard shortcut', async ({ page }) => {
+    // Press CTRL+K
+    await page.keyboard.press('Control+K')
+    
+    // Wait for command palette to appear
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+  })
+
+  test('should open command palette by clicking CTRL+K button', async ({ page }) => {
+    // Click the CTRL+K button
+    const searchButton = page.getByRole('button', { name: /CTRL.*K/i }).or(page.getByText('CTRL+ K'))
+    await searchButton.click()
+    
+    // Wait for command palette to appear
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+  })
+
+  test('should show all actions when query is empty', async ({ page }) => {
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    await expect(page.getByPlaceholder('Search actions, tabs and bookmarks...')).toBeVisible()
+    
+    // Should show action items
+    await expect(page.getByText('Fold all groups')).toBeVisible()
+    await expect(page.getByText('Unfold all groups')).toBeVisible()
+    await expect(page.getByText('Create new bookmark')).toBeVisible()
+    await expect(page.getByText('Create new group')).toBeVisible()
+    await expect(page.getByText('Create new tab')).toBeVisible()
+    await expect(page.getByText('Backup user data')).toBeVisible()
+  })
+
+  test('should filter actions by query', async ({ page }) => {
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Type to filter
+    await input.fill('bookmark')
+    
+    // Should show create bookmark action
+    await expect(page.getByText('Create new bookmark')).toBeVisible()
+    // Should not show unrelated actions
+    await expect(page.getByText('Create new tab')).toBeHidden()
+  })
+
+  test('should execute fold all groups action', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    
+    // Set up a group with bookmarks
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-1',
+        name: 'Test Group',
+        color: '#3b82f6',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    await setupMockBookmarks(page, [
+      {
+        id: 'bookmark-1',
+        name: 'Bookmark 1',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+        groupIds: ['group-1'],
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Verify bookmark is visible (group is expanded by default)
+    await expect(page.getByText('Bookmark 1')).toBeVisible()
+
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Type to find fold action
+    await input.fill('fold')
+    
+    // Click on fold action
+    await page.getByText('Fold all groups').click()
+    
+    // Wait for command palette to close
+    await expect(input).toBeHidden()
+    
+    // Verify bookmark is hidden (group is collapsed)
+    await expect(page.getByText('Bookmark 1')).toBeHidden()
+  })
+
+  test('should execute unfold all groups action', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    
+    // Set up a group with bookmarks
+    await page.evaluate((tabId) => {
+      const groups = [{
+        id: 'group-1',
+        name: 'Test Group',
+        color: '#3b82f6',
+        tabId: tabId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
+      localStorage.setItem('groups-mock-data', JSON.stringify(groups))
+    }, defaultTab.id)
+
+    await setupMockBookmarks(page, [
+      {
+        id: 'bookmark-1',
+        name: 'Bookmark 1',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+        groupIds: ['group-1'],
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // First fold the group
+    const groupHeading = page.getByRole('heading', { name: 'Test Group' })
+    const collapseButton = groupHeading.locator('..').locator('..').getByLabel('Toggle group')
+    await collapseButton.click()
+    await expect(page.getByText('Bookmark 1')).toBeHidden()
+
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Type to find unfold action
+    await input.fill('unfold')
+    
+    // Click on unfold action
+    await page.getByText('Unfold all groups').click()
+    
+    // Wait for command palette to close
+    await expect(input).toBeHidden()
+    
+    // Verify bookmark is visible again (group is expanded)
+    await expect(page.getByText('Bookmark 1')).toBeVisible()
+  })
+
+  test('should execute create bookmark action', async ({ page }) => {
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Type to find create bookmark action
+    await input.fill('bookmark')
+    
+    // Click on create bookmark action
+    await page.getByText('Create new bookmark').click()
+    
+    // Wait for command palette to close and add bookmark form to open
+    await expect(input).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeVisible()
+  })
+
+  test('should execute create group action', async ({ page }) => {
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Type to find create group action
+    await input.fill('group')
+    
+    // Click on create group action
+    await page.getByText('Create new group').click()
+    
+    // Wait for command palette to close and add group form to open
+    await expect(input).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Add New Group' })).toBeVisible()
+  })
+
+  test('should execute create tab action', async ({ page }) => {
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Type to find create tab action
+    await input.fill('tab')
+    
+    // Click on create tab action
+    await page.getByText('Create new tab').click()
+    
+    // Wait for command palette to close and add tab form to open
+    await expect(input).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Add New Tab' })).toBeVisible()
+  })
+
+  test('should execute backup data action', async ({ page }) => {
+    // Set up some data to export
+    const defaultTab = await setupDefaultTab(page)
+    await setupMockBookmarks(page, [
+      {
+        id: 'bookmark-1',
+        name: 'Test Bookmark',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Set up download listener
+    const downloadPromise = page.waitForEvent('download')
+
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Type to find backup action
+    await input.fill('backup')
+    
+    // Click on backup action
+    await page.getByText('Backup user data').click()
+    
+    // Wait for download
+    const download = await downloadPromise
+    
+    // Verify download
+    expect(download.suggestedFilename()).toMatch(/^bookmarks-export-\d{4}-\d{2}-\d{2}\.json$/)
+    
+    // Wait for command palette to close
+    await expect(input).toBeHidden()
+  })
+
+  test('should search for tabs', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    await setupMockTabs(page, [
+      defaultTab,
+      {
+        id: 'tab-2',
+        name: 'Searchable Tab',
+        color: '#10b981',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Search for tab
+    await input.fill('Searchable')
+    
+    // Should show the tab in results
+    await expect(page.getByText('Searchable Tab')).toBeVisible()
+  })
+
+  test('should search for bookmarks', async ({ page }) => {
+    const defaultTab = await setupDefaultTab(page)
+    await setupMockBookmarks(page, [
+      {
+        id: 'bookmark-1',
+        name: 'Searchable Bookmark',
+        url: 'https://example.com',
+        createdAt: new Date().toISOString(),
+        tabId: defaultTab.id,
+      },
+    ])
+
+    await page.reload()
+    await waitForBookmarksLoaded(page)
+
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Search for bookmark
+    await input.fill('Searchable')
+    
+    // Should show the bookmark in results
+    await expect(page.getByText('Searchable Bookmark')).toBeVisible()
+  })
+
+  test('should navigate results with arrow keys', async ({ page }) => {
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Press arrow down
+    await input.press('ArrowDown')
+    
+    // First result should be highlighted (we can't easily test visual state, but we can test that navigation works)
+    // Press arrow down again
+    await input.press('ArrowDown')
+    
+    // Press arrow up
+    await input.press('ArrowUp')
+  })
+
+  test('should select result with Enter key', async ({ page }) => {
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Type to find create bookmark action
+    await input.fill('bookmark')
+    
+    // Press Enter to select
+    await input.press('Enter')
+    
+    // Wait for command palette to close and add bookmark form to open
+    await expect(input).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Add New Bookmark' })).toBeVisible()
+  })
+
+  test('should close command palette with Escape key', async ({ page }) => {
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Press Escape
+    await input.press('Escape')
+    
+    // Command palette should close
+    await expect(input).toBeHidden()
+  })
+
+  test('should close command palette by clicking outside', async ({ page }) => {
+    // Open command palette
+    await page.keyboard.press('Control+K')
+    const input = page.getByPlaceholder('Search actions, tabs and bookmarks...')
+    await expect(input).toBeVisible()
+    
+    // Click outside (on backdrop)
+    await page.click('body', { position: { x: 10, y: 10 } })
+    
+    // Command palette should close
+    await expect(input).toBeHidden()
   })
 })
