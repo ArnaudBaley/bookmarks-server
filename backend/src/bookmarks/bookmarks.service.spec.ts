@@ -93,9 +93,17 @@ describe('BookmarksService', () => {
       const result = await service.findAll();
 
       expect(result).toEqual(mockBookmarks);
-      expect(mockBookmarkRepository.createQueryBuilder).toHaveBeenCalledWith('bookmark');
-      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith('bookmark.groups', 'groups');
-      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith('bookmark.tabs', 'tabs');
+      expect(mockBookmarkRepository.createQueryBuilder).toHaveBeenCalledWith(
+        'bookmark',
+      );
+      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+        'bookmark.groups',
+        'groups',
+      );
+      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+        'bookmark.tabs',
+        'tabs',
+      );
       expect(mockQueryBuilder.where).not.toHaveBeenCalled();
       expect(mockQueryBuilder.getMany).toHaveBeenCalled();
     });
@@ -116,10 +124,12 @@ describe('BookmarksService', () => {
       const result = await service.findAll('tab-1');
 
       expect(result).toEqual(mockBookmarks);
-      expect(mockBookmarkRepository.createQueryBuilder).toHaveBeenCalledWith('bookmark');
+      expect(mockBookmarkRepository.createQueryBuilder).toHaveBeenCalledWith(
+        'bookmark',
+      );
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
         '(bookmark.tabId = :tabId OR tabs.id = :tabId)',
-        { tabId: 'tab-1' }
+        { tabId: 'tab-1' },
       );
       expect(mockQueryBuilder.getMany).toHaveBeenCalled();
     });

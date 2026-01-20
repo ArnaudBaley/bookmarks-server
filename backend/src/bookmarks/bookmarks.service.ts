@@ -22,15 +22,15 @@ export class BookmarksService {
   async findAll(tabId?: string): Promise<Bookmark[]> {
     const queryBuilder = this.bookmarkRepository
       .createQueryBuilder('bookmark')
+      .distinct(true)
       .leftJoinAndSelect('bookmark.groups', 'groups')
       .leftJoinAndSelect('bookmark.tabs', 'tabs');
 
     if (tabId) {
       // Return bookmarks where tabId matches OR the bookmark belongs to the tab via tabs relationship
-      queryBuilder.where(
-        '(bookmark.tabId = :tabId OR tabs.id = :tabId)',
-        { tabId }
-      );
+      queryBuilder.where('(bookmark.tabId = :tabId OR tabs.id = :tabId)', {
+        tabId,
+      });
     }
 
     return queryBuilder.getMany();
@@ -105,15 +105,16 @@ export class BookmarksService {
         const tabs = await this.tabRepository.findBy({
           id: In(updateBookmarkDto.tabIds),
         });
-        
+
         // Preserve original tabId if it's still in the selected tabs (for backward compatibility)
         const originalTabId = bookmark.tabId;
-        const originalTabStillSelected = originalTabId && updateBookmarkDto.tabIds.includes(originalTabId);
-        
+        const originalTabStillSelected =
+          originalTabId && updateBookmarkDto.tabIds.includes(originalTabId);
+
         // If original tab is still selected, put it first in the array
         if (originalTabStillSelected) {
-          const originalTab = tabs.find(tab => tab.id === originalTabId);
-          const otherTabs = tabs.filter(tab => tab.id !== originalTabId);
+          const originalTab = tabs.find((tab) => tab.id === originalTabId);
+          const otherTabs = tabs.filter((tab) => tab.id !== originalTabId);
           bookmark.tabs = originalTab ? [originalTab, ...otherTabs] : tabs;
           bookmark.tabId = originalTabId;
         } else {

@@ -206,7 +206,10 @@ describe('GroupsController', () => {
 
       await controller.addBookmarkToGroup('group-1', 'bookmark-1');
 
-      expect(service.addBookmarkToGroup).toHaveBeenCalledWith('group-1', 'bookmark-1');
+      expect(service.addBookmarkToGroup).toHaveBeenCalledWith(
+        'group-1',
+        'bookmark-1',
+      );
     });
 
     it('should throw NotFoundException when group not found', async () => {

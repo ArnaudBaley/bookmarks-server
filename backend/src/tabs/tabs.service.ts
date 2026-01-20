@@ -79,7 +79,10 @@ export class TabsService {
       // Handle database unique constraint violation
       if (error && typeof error === 'object' && 'code' in error) {
         const dbError = error as { code: string };
-        if (dbError.code === 'SQLITE_CONSTRAINT_UNIQUE' || dbError.code === '23505') {
+        if (
+          dbError.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+          dbError.code === '23505'
+        ) {
           throw new ConflictException(
             `Tab with name "${createTabDto.name}" already exists`,
           );
@@ -113,7 +116,10 @@ export class TabsService {
       // Handle database unique constraint violation
       if (error && typeof error === 'object' && 'code' in error) {
         const dbError = error as { code: string };
-        if (dbError.code === 'SQLITE_CONSTRAINT_UNIQUE' || dbError.code === '23505') {
+        if (
+          dbError.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+          dbError.code === '23505'
+        ) {
           throw new ConflictException(
             `Tab with name "${updateTabDto.name}" already exists`,
           );

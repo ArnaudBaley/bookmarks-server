@@ -1,5 +1,6 @@
 # Bugs
 
+- When I copy a tab, the new tab has two times the bookmarks of the ungrouped group.
 
 
 # UI
@@ -24,7 +25,7 @@ I want the user to use the same mecanism for copying groups in other tabs.
 
 # Dev tool
 
--  
+- Analyse the unit test performance and see if you can increase it 
 
 - I want eslint and prettier on the codebase. It must lint and format at every save.
 

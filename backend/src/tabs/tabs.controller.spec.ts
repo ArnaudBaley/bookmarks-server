@@ -144,7 +144,9 @@ describe('TabsController', () => {
         new ConflictException('Tab with name "Existing Tab" already exists'),
       );
 
-      await expect(controller.create(createDto)).rejects.toThrow(ConflictException);
+      await expect(controller.create(createDto)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 

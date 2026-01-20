@@ -17,5 +17,6 @@ export interface UpdateGroupDto {
   name?: string
   color?: string
   tabId?: string
+  targetTabIds?: string[]
 }
 

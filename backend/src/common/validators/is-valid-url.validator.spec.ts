@@ -24,7 +24,9 @@ describe('IsValidUrlConstraint', () => {
 
     it('should return true for valid URLs with query parameters', () => {
       expect(validator.validate('https://example.com?param=value')).toBe(true);
-      expect(validator.validate('https://example.com?param1=value1&param2=value2')).toBe(true);
+      expect(
+        validator.validate('https://example.com?param1=value1&param2=value2'),
+      ).toBe(true);
     });
 
     it('should return true for valid URLs with fragments', () => {

@@ -261,7 +261,62 @@ async function handleModifyGroup(group: Group) {
 
 async function handleUpdateGroup(id: string, data: UpdateGroupDto) {
   try {
-    await groupStore.updateGroup(id, data)
+    // Extract targetTabIds before updating (since we'll remove it from the update data)
+    const targetTabIds = data.targetTabIds
+    const updateData = { ...data }
+    delete updateData.targetTabIds
+    
+    // Update the original group
+    await groupStore.updateGroup(id, updateData)
+    
+    // If targetTabIds is provided, copy the group to those tabs
+    if (targetTabIds && targetTabIds.length > 0) {
+      // Get the updated group to ensure we have the latest name and color
+      const updatedGroup = groupStore.getGroupById(id)
+      if (!updatedGroup) {
+        console.error('Group not found after update')
+        editingGroup.value = null
+        return
+      }
+      
+      // Use the updated name and color (from the form) for the copies
+      const groupName = updateData.name || updatedGroup.name
+      const groupColor = updateData.color || updatedGroup.color
+      
+      // Get all bookmarks that belong to the original group
+      const allBookmarks = await bookmarkApi.getAllBookmarks()
+      const bookmarksInGroup = allBookmarks.filter(
+        (bookmark) => bookmark.groupIds?.includes(id)
+      )
+      
+      // For each target tab, create a copy of the group and its bookmarks
+      for (const targetTabId of targetTabIds) {
+        // Create the new group in the target tab with updated name and color
+        const newGroup = await groupStore.addGroup({
+          name: groupName,
+          color: groupColor,
+          tabId: targetTabId,
+        })
+        
+        // Copy each bookmark from the original group to the new group
+        for (const bookmark of bookmarksInGroup) {
+          // Determine which tabs the bookmark should belong to
+          // Include the target tab and preserve existing tabs if they make sense
+          const bookmarkTabIds = bookmark.tabIds || (bookmark.tabId ? [bookmark.tabId] : [])
+          const newTabIds = bookmarkTabIds.includes(targetTabId) 
+            ? bookmarkTabIds 
+            : [...bookmarkTabIds, targetTabId]
+          
+          await bookmarkStore.addBookmark({
+            name: bookmark.name,
+            url: bookmark.url,
+            tabIds: newTabIds.length > 0 ? newTabIds : [targetTabId],
+            groupIds: [newGroup.id],
+          })
+        }
+      }
+    }
+    
     editingGroup.value = null
   } catch (error) {
     console.error('Failed to update group:', error)

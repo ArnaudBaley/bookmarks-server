@@ -9,5 +9,3 @@ export class UpdateTabDto {
   @IsString()
   color?: string;
 }
-
-

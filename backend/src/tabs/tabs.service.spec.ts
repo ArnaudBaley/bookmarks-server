@@ -410,16 +410,15 @@ describe('TabsService', () => {
 
       // First call: findOne to get existing tab (by id)
       // Second call: findByName to check for duplicates (finds conflicting tab)
-      mockTabRepository.findOne
-        .mockImplementation((options) => {
-          if (options.where.id === '1') {
-            return Promise.resolve(existingTab);
-          }
-          if (options.where.name === 'Tab 2') {
-            return Promise.resolve(conflictingTab);
-          }
-          return Promise.resolve(null);
-        });
+      mockTabRepository.findOne.mockImplementation((options) => {
+        if (options.where.id === '1') {
+          return Promise.resolve(existingTab);
+        }
+        if (options.where.name === 'Tab 2') {
+          return Promise.resolve(conflictingTab);
+        }
+        return Promise.resolve(null);
+      });
 
       await expect(service.update('1', updateDto)).rejects.toThrow(
         ConflictException,
@@ -462,16 +461,15 @@ describe('TabsService', () => {
 
       // First call: findOne to get existing tab (by id)
       // Second call: findByName returns null (race condition - no conflict found initially)
-      mockTabRepository.findOne
-        .mockImplementation((options) => {
-          if (options.where.id === '1') {
-            return Promise.resolve(existingTab);
-          }
-          if (options.where.name === 'Tab 2') {
-            return Promise.resolve(null); // Race condition - no conflict found initially
-          }
-          return Promise.resolve(null);
-        });
+      mockTabRepository.findOne.mockImplementation((options) => {
+        if (options.where.id === '1') {
+          return Promise.resolve(existingTab);
+        }
+        if (options.where.name === 'Tab 2') {
+          return Promise.resolve(null); // Race condition - no conflict found initially
+        }
+        return Promise.resolve(null);
+      });
       mockTabRepository.save.mockRejectedValue(dbError);
 
       await expect(service.update('1', updateDto)).rejects.toThrow(

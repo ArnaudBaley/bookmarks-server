@@ -1,20 +1,48 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
 import EditGroupForm from './EditGroupForm.vue'
-import { createGroup } from '@/test-utils'
+import { createGroup, createTab, mountWithPinia } from '@/test-utils'
+import { groupApi } from '@/services/groupApi/groupApi'
+import * as tabApiModule from '@/services/tabApi/tabApi'
+
+// Mock the groupApi
+vi.mock('@/services/groupApi/groupApi', () => ({
+  groupApi: {
+    getAllGroups: vi.fn(),
+  },
+}))
 
 describe('EditGroupForm', () => {
+  const mockTabs = [
+    createTab({ id: 'test-tab-id-1', name: 'Tab 1' }),
+    createTab({ id: 'test-tab-id-2', name: 'Tab 2' }),
+  ]
+
+  const mockGroups = [
+    createGroup({ id: 'group-1', name: 'Group 1', tabId: 'test-tab-id-1' }),
+    createGroup({ id: 'group-2', name: 'Group 2', tabId: 'test-tab-id-2' }),
+  ]
+
   beforeEach(() => {
     vi.clearAllMocks()
+    // Mock groupApi.getAllGroups to return empty array by default
+    vi.mocked(groupApi.getAllGroups).mockResolvedValue([])
+    // Mock tabApi.getAllTabs to return empty array by default
+    vi.spyOn(tabApiModule.tabApi, 'getAllTabs').mockResolvedValue([])
   })
 
-  it('renders form fields correctly', () => {
-    const group = createGroup({ name: 'Test Group', color: '#3b82f6' })
-    const wrapper = mount(EditGroupForm, {
+  it('renders form fields correctly', async () => {
+    const group = createGroup({ name: 'Test Group', color: '#3b82f6', tabId: 'test-tab-id-1' })
+    vi.mocked(groupApi.getAllGroups).mockResolvedValue(mockGroups)
+    vi.spyOn(tabApiModule.tabApi, 'getAllTabs').mockResolvedValue(mockTabs)
+    
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     expect(wrapper.find('input[id="group-name"]').exists()).toBe(true)
     expect(wrapper.find('input[id="group-color"]').exists()).toBe(true)
@@ -24,8 +52,8 @@ describe('EditGroupForm', () => {
   })
 
   it('renders form title', () => {
-    const group = createGroup({ name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
@@ -34,25 +62,29 @@ describe('EditGroupForm', () => {
   })
 
   it('initializes form with group data', async () => {
-    const group = createGroup({ name: 'Original Name', color: '#ef4444' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Original Name', color: '#ef4444', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
 
     await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
     const nameInput = wrapper.find('input[id="group-name"]')
     expect((nameInput.element as HTMLInputElement).value).toBe('Original Name')
   })
 
   it('validates that name is required', async () => {
-    const group = createGroup({ name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const nameInput = wrapper.find('input[id="group-name"]')
     await nameInput.setValue('')
@@ -65,12 +97,15 @@ describe('EditGroupForm', () => {
   })
 
   it('emits submit event with correct data on valid form submission', async () => {
-    const group = createGroup({ id: 'group-id', name: 'Original Name', color: '#3b82f6' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ id: 'group-id', name: 'Original Name', color: '#3b82f6', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const nameInput = wrapper.find('input[id="group-name"]')
     await nameInput.setValue('Updated Name')
@@ -84,17 +119,21 @@ describe('EditGroupForm', () => {
       {
         name: 'Updated Name',
         color: '#3b82f6',
+        targetTabIds: undefined,
       },
     ])
   })
 
   it('allows color selection via color picker', async () => {
-    const group = createGroup({ id: 'group-id', name: 'Test Group', color: '#3b82f6' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ id: 'group-id', name: 'Test Group', color: '#3b82f6', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const colorInput = wrapper.find('input[id="group-color"]')
     await colorInput.setValue('#ef4444')
@@ -106,14 +145,15 @@ describe('EditGroupForm', () => {
   })
 
   it('allows color selection via palette buttons', async () => {
-    const group = createGroup({ id: 'group-id', name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ id: 'group-id', name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
 
     await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     // Find and click a palette color button (exclude Cancel button)
     // Look for button with aria-label "Select color #ef4444"
@@ -129,12 +169,15 @@ describe('EditGroupForm', () => {
   })
 
   it('trims whitespace from name', async () => {
-    const group = createGroup({ id: 'group-id', name: 'Original' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ id: 'group-id', name: 'Original', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const nameInput = wrapper.find('input[id="group-name"]')
     await nameInput.setValue('  Updated Name  ')
@@ -146,12 +189,15 @@ describe('EditGroupForm', () => {
   })
 
   it('emits cancel event when cancel button is clicked', async () => {
-    const group = createGroup({ name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const cancelButton = wrapper.findAll('button[type="button"]').find((btn) => btn.text() === 'Cancel')
     await cancelButton!.trigger('click')
@@ -160,12 +206,15 @@ describe('EditGroupForm', () => {
   })
 
   it('resets form to original values when cancel is clicked', async () => {
-    const group = createGroup({ name: 'Original Name', color: '#3b82f6' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Original Name', color: '#3b82f6', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const nameInput = wrapper.find('input[id="group-name"]')
     await nameInput.setValue('Changed Name')
@@ -180,12 +229,15 @@ describe('EditGroupForm', () => {
   })
 
   it('emits cancel event when clicking outside the modal', async () => {
-    const group = createGroup({ name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const backdrop = wrapper.find('.fixed.inset-0')
     await backdrop.trigger('click.self')
@@ -194,12 +246,15 @@ describe('EditGroupForm', () => {
   })
 
   it('does not emit cancel when clicking inside the modal', async () => {
-    const group = createGroup({ name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const modalContent = wrapper.find('.bg-\\[var\\(--color-background\\)\\]')
     await modalContent.trigger('click')
@@ -208,12 +263,15 @@ describe('EditGroupForm', () => {
   })
 
   it('emits delete event when delete button is clicked', async () => {
-    const group = createGroup({ id: 'group-id', name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ id: 'group-id', name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const deleteButton = wrapper.find('button[aria-label="Delete group"]')
     await deleteButton.trigger('click')
@@ -223,12 +281,15 @@ describe('EditGroupForm', () => {
   })
 
   it('clears error message on new submission attempt', async () => {
-    const group = createGroup({ name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     // First submission with invalid data
     const nameInput = wrapper.find('input[id="group-name"]')
@@ -245,12 +306,15 @@ describe('EditGroupForm', () => {
   })
 
   it('displays error message when validation fails', async () => {
-    const group = createGroup({ name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const nameInput = wrapper.find('input[id="group-name"]')
     await nameInput.setValue('')
@@ -271,12 +335,15 @@ describe('EditGroupForm', () => {
   })
 
   it('handles Escape key to cancel', async () => {
-    const group = createGroup({ name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     // Trigger Escape key on window since component listens to window events
     const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
@@ -287,8 +354,8 @@ describe('EditGroupForm', () => {
   })
 
   it('focuses name input on mount', async () => {
-    const group = createGroup({ name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+    const group = createGroup({ name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
@@ -296,18 +363,22 @@ describe('EditGroupForm', () => {
     const nameInput = wrapper.find('input[id="group-name"]')
 
     await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     // Check that the input exists and can be focused
     expect(nameInput.exists()).toBe(true)
   })
 
-  it('displays delete button with correct styling', () => {
-    const group = createGroup({ name: 'Test Group' })
-    const wrapper = mount(EditGroupForm, {
+  it('displays delete button with correct styling', async () => {
+    const group = createGroup({ name: 'Test Group', tabId: 'test-tab-id-1' })
+    const wrapper = mountWithPinia(EditGroupForm, {
       props: {
         group,
       },
     })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200)) // Wait for async operations
 
     const deleteButton = wrapper.find('button[aria-label="Delete group"]')
     expect(deleteButton.exists()).toBe(true)
