@@ -25,6 +25,10 @@ Each group can be copy or moved to another tab
 
 # Dev tool
 
+- ~~Decreaese the e2e timeout.~~ ✅
+
+- ~~Create a e2e npm script that launch e2e tests only on chrome.~~ ✅
+
 - I want eslint and prettier on the codebase. It must lint and format at every save.
 
 - UI tests in docker instead from host

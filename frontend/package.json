@@ -14,6 +14,8 @@
     "test:unit": "vitest --run",
     "test:unit:coverage": "vitest --coverage",
     "test:e2e": "playwright test e2e/features.spec.ts",
+    "test:e2e:chrome": "playwright test e2e/features.spec.ts --project=chromium",
+    "test:e2e:headed:chrome": "playwright test --headed e2e/features.spec.ts --project=chromium",
     "test:e2e:headed": "playwright test --headed e2e/features.spec.ts",
     "test:e2e:take-snapshots": "playwright test e2e/snapshots.spec.ts --update-snapshots",
     "test:e2e:check-snapshots": "playwright test e2e/snapshots.spec.ts",
