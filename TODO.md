@@ -1,6 +1,6 @@
 # Bugs
 
-- When I copy a tab, the new tab has two times the bookmarks of the ungrouped group.
+- 
 
 
 # UI
@@ -16,8 +16,7 @@
 
 # Features
 
-- As a user, I can already edit a bookmark and select the groups it can belongs to.
-I want the user to use the same mecanism for copying groups in other tabs.
+- 
 
 - User must be able to sort manually bookmarks in a group (by drag and drop)
 - User must be able to sort manually sections (by drag and drop)
