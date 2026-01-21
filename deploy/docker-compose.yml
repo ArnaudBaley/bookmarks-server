@@ -1,23 +1,21 @@
-version: '3.8'
-
 name: bookmarks-server-dev
 
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: deploy/Dockerfile.dev
+      context: ../backend
+      dockerfile: ../deploy/backend/Dockerfile.dev
     container_name: bookmarks-backend-dev
     ports:
       - "3000:3000"
     volumes:
       # Mount source code for hot-reload
-      - ./backend/src:/app/src
-      - ./backend/tsconfig.json:/app/tsconfig.json
-      - ./backend/tsconfig.build.json:/app/tsconfig.build.json
-      - ./backend/nest-cli.json:/app/nest-cli.json
+      - ../backend/src:/app/src
+      - ../backend/tsconfig.json:/app/tsconfig.json
+      - ../backend/tsconfig.build.json:/app/tsconfig.build.json
+      - ../backend/nest-cli.json:/app/nest-cli.json
       # Mount data directory for database persistence
-      - ./backend/deploy/data:/app/data
+      - ../data:/app/data
       # Exclude node_modules from volume mount (use container's)
       - /app/node_modules
     environment:
@@ -36,21 +34,21 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: deploy/Dockerfile.dev
+      context: ../frontend
+      dockerfile: ../deploy/frontend/Dockerfile.dev
     container_name: bookmarks-frontend-dev
     ports:
       - "5173:5173"
     volumes:
       # Mount source code for hot-reload
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
-      - ./frontend/index.html:/app/index.html
-      - ./frontend/vite.config.ts:/app/vite.config.ts
-      - ./frontend/tsconfig.json:/app/tsconfig.json
-      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
-      - ./frontend/tailwind.config.ts:/app/tailwind.config.ts
-      - ./frontend/postcss.config.js:/app/postcss.config.js
+      - ../frontend/src:/app/src
+      - ../frontend/public:/app/public
+      - ../frontend/index.html:/app/index.html
+      - ../frontend/vite.config.ts:/app/vite.config.ts
+      - ../frontend/tsconfig.json:/app/tsconfig.json
+      - ../frontend/tsconfig.app.json:/app/tsconfig.app.json
+      - ../frontend/tailwind.config.ts:/app/tailwind.config.ts
+      - ../frontend/postcss.config.js:/app/postcss.config.js
       # Exclude node_modules from volume mount (use container's)
       - /app/node_modules
     environment:
@@ -65,6 +63,3 @@ services:
 networks:
   bookmarks-network-dev:
     driver: bridge
-    name: bookmarks-network-dev
-
-

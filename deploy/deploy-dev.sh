@@ -1,21 +1,19 @@
 #!/bin/bash
 
 # Deploy script for development Docker environment
-# Builds the image and starts the container
+# Builds the images and starts the containers for both frontend and backend
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "$SCRIPT_DIR"
 
-echo "Building development Docker image..."
+echo "Building development Docker images..."
 docker compose -f docker-compose.yml build
 
-echo "Starting development container..."
+echo "Starting development containers..."
 docker compose -f docker-compose.yml up -d
 
 echo "Development environment deployed successfully!"
-echo "Access at: http://localhost:3000"
-
-
-
+echo "Frontend: http://localhost:5173"
+echo "Backend: http://localhost:3000"

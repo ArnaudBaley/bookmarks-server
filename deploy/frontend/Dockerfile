@@ -31,8 +31,8 @@ FROM nginx:alpine
 # Install wget for health checks
 RUN apk add --no-cache wget
 
-# Copy nginx configuration
-COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx configuration from deploy context
+COPY --from=deploy frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
@@ -42,5 +42,3 @@ EXPOSE 80
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
-
-
