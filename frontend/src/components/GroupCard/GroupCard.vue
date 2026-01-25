@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import type { Group } from '@/types/group'
 import type { Bookmark } from '@/types/bookmark'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'

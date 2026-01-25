@@ -272,6 +272,7 @@ describe('BookmarkCard', () => {
 
     expect(setDataSpy).toHaveBeenCalledWith('text/plain', 'test-id')
     expect(dragEvent.dataTransfer?.effectAllowed).toBe('move')
+    expect(wrapper.emitted('drag-start')).toBeTruthy()
   })
 
   it('handles drag end event and restores opacity', async () => {
@@ -296,6 +297,7 @@ describe('BookmarkCard', () => {
     await wrapper.vm.$nextTick()
 
     expect((card.element as HTMLElement).style.opacity).toBe('1')
+    expect(wrapper.emitted('drag-end')).toBeTruthy()
   })
 
   it('handles drag start when dataTransfer is null', async () => {
@@ -334,6 +336,52 @@ describe('BookmarkCard', () => {
     // Should not throw error - dispatch event directly
     card.element.dispatchEvent(dragEvent)
     await wrapper.vm.$nextTick()
+  })
+
+  it('shows drag handle when groupId prop is provided', () => {
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark, groupId: 'group-123' },
+    })
+
+    const dragHandle = wrapper.find('.cursor-grab')
+    expect(dragHandle.exists()).toBe(true)
+  })
+
+  it('does not show drag handle when groupId prop is not provided', () => {
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    const dragHandle = wrapper.find('.cursor-grab')
+    expect(dragHandle.exists()).toBe(false)
+  })
+
+  it('sets reorder-specific data when groupId is provided', async () => {
+    const bookmark = createBookmark({ id: 'test-id', name: 'Test Bookmark' })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark, groupId: 'group-123' },
+    })
+
+    const card = wrapper.find('[role="button"]')
+    const setDataSpy = vi.fn()
+    const dragEvent = new DragEvent('dragstart', { bubbles: true })
+    Object.defineProperty(dragEvent, 'dataTransfer', {
+      value: {
+        effectAllowed: '',
+        setData: setDataSpy,
+      },
+      writable: true,
+      configurable: true,
+    })
+
+    card.element.dispatchEvent(dragEvent)
+    await wrapper.vm.$nextTick()
+
+    expect(setDataSpy).toHaveBeenCalledWith('text/plain', 'test-id')
+    expect(setDataSpy).toHaveBeenCalledWith('application/x-bookmark-reorder', 'test-id')
+    expect(setDataSpy).toHaveBeenCalledWith('application/x-bookmark-source-group', 'group-123')
   })
 
 })

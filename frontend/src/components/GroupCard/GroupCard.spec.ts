@@ -412,5 +412,145 @@ describe('GroupCard', () => {
     // We can check if the border style changes
     expect(wrapper.exists()).toBe(true)
   })
+
+  it('passes groupId prop to BookmarkCard components', () => {
+    const group = createGroup({ id: 'group-id', name: 'Test Group' })
+    const bookmarks = createBookmarkArray(2)
+
+    const wrapper = mount(GroupCard, {
+      props: {
+        group,
+        bookmarks,
+      },
+      global: {
+        plugins: [createTestPinia()],
+      },
+    })
+
+    const bookmarkCards = wrapper.findAllComponents({ name: 'BookmarkCard' })
+    expect(bookmarkCards.length).toBe(2)
+    bookmarkCards.forEach((card) => {
+      expect(card.props('groupId')).toBe('group-id')
+    })
+  })
+
+  it('emits move-up event when move up button is clicked', async () => {
+    const group = createGroup({ name: 'Test Group' })
+    const wrapper = mount(GroupCard, {
+      props: {
+        group,
+        bookmarks: [],
+        isFirst: false,
+      },
+      global: {
+        plugins: [createTestPinia()],
+      },
+    })
+
+    const moveUpButton = wrapper.findAll('button').find((btn) => {
+      return btn.attributes('aria-label') === 'Move group up'
+    })
+
+    expect(moveUpButton).toBeDefined()
+    await moveUpButton!.trigger('click')
+
+    expect(wrapper.emitted('move-up')).toBeTruthy()
+  })
+
+  it('emits move-down event when move down button is clicked', async () => {
+    const group = createGroup({ name: 'Test Group' })
+    const wrapper = mount(GroupCard, {
+      props: {
+        group,
+        bookmarks: [],
+        isLast: false,
+      },
+      global: {
+        plugins: [createTestPinia()],
+      },
+    })
+
+    const moveDownButton = wrapper.findAll('button').find((btn) => {
+      return btn.attributes('aria-label') === 'Move group down'
+    })
+
+    expect(moveDownButton).toBeDefined()
+    await moveDownButton!.trigger('click')
+
+    expect(wrapper.emitted('move-down')).toBeTruthy()
+  })
+
+  it('disables move up button when isFirst is true', () => {
+    const group = createGroup({ name: 'Test Group' })
+    const wrapper = mount(GroupCard, {
+      props: {
+        group,
+        bookmarks: [],
+        isFirst: true,
+      },
+      global: {
+        plugins: [createTestPinia()],
+      },
+    })
+
+    const moveUpButton = wrapper.findAll('button').find((btn) => {
+      return btn.attributes('aria-label') === 'Move group up'
+    })
+
+    expect(moveUpButton).toBeDefined()
+    expect(moveUpButton!.attributes('disabled')).toBeDefined()
+    expect(moveUpButton!.classes()).toContain('opacity-20')
+    expect(moveUpButton!.classes()).toContain('cursor-not-allowed')
+  })
+
+  it('disables move down button when isLast is true', () => {
+    const group = createGroup({ name: 'Test Group' })
+    const wrapper = mount(GroupCard, {
+      props: {
+        group,
+        bookmarks: [],
+        isLast: true,
+      },
+      global: {
+        plugins: [createTestPinia()],
+      },
+    })
+
+    const moveDownButton = wrapper.findAll('button').find((btn) => {
+      return btn.attributes('aria-label') === 'Move group down'
+    })
+
+    expect(moveDownButton).toBeDefined()
+    expect(moveDownButton!.attributes('disabled')).toBeDefined()
+    expect(moveDownButton!.classes()).toContain('opacity-20')
+    expect(moveDownButton!.classes()).toContain('cursor-not-allowed')
+  })
+
+  it('handles bookmark drag-start and drag-end events', async () => {
+    const group = createGroup({ id: 'group-id', name: 'Test Group' })
+    const bookmark = createBookmark({ id: 'bookmark-id' })
+    const wrapper = mount(GroupCard, {
+      props: {
+        group,
+        bookmarks: [bookmark],
+      },
+      global: {
+        plugins: [createTestPinia()],
+      },
+    })
+
+    const bookmarkCard = wrapper.findComponent({ name: 'BookmarkCard' })
+    
+    // Simulate drag-start
+    await bookmarkCard.vm.$emit('drag-start', bookmark.id)
+    await wrapper.vm.$nextTick()
+
+    // Simulate drag-end
+    await bookmarkCard.vm.$emit('drag-end')
+    await wrapper.vm.$nextTick()
+
+    // Component should handle these events without errors
+    expect(wrapper.exists()).toBe(true)
+  })
 })
 
