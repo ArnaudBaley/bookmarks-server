@@ -181,16 +181,19 @@ describe('GroupCard', () => {
       },
     })
 
+    // Find the toggle button by its aria-label
     const toggleButton = wrapper.findAll('button').find((btn) => {
-      const svg = btn.find('svg')
-      return svg.exists() && svg.html().includes('polyline')
+      return btn.attributes('aria-label') === 'Toggle group'
     })
 
     expect(toggleButton).toBeDefined()
     await toggleButton!.trigger('click')
+    await wrapper.vm.$nextTick()
 
     const content = wrapper.find('.p-4.pt-0')
-    expect(content.isVisible()).toBe(false)
+    // Check that v-show has hidden it by checking the element's style
+    const element = content.element as HTMLElement
+    expect(element.style.display).toBe('none')
   })
 
   it('emits modify event when edit button is clicked', async () => {

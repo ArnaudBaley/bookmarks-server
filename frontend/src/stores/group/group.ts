@@ -167,24 +167,15 @@ export const useGroupStore = defineStore('group', () => {
     const index = sorted.findIndex((g) => g.id === groupId)
     if (index <= 0) return // Already at top or not found
 
-    const group = sorted[index]
     const targetGroup = sorted[index - 1]
     const newOrderIndex = targetGroup.orderIndex
 
     loading.value = true
     error.value = null
     try {
-      const updatedGroup = await groupApi.reorderGroup(groupId, newOrderIndex)
-      // Update the group in the store
-      const storeIndex = groups.value.findIndex((g) => g.id === groupId)
-      if (storeIndex !== -1) {
-        groups.value[storeIndex] = updatedGroup
-      }
-      // Update the target group's orderIndex locally (it was shifted down)
-      const targetStoreIndex = groups.value.findIndex((g) => g.id === targetGroup.id)
-      if (targetStoreIndex !== -1) {
-        groups.value[targetStoreIndex].orderIndex = group.orderIndex
-      }
+      await groupApi.reorderGroup(groupId, newOrderIndex)
+      // Refetch all groups to get updated orderIndex values
+      await fetchGroups()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to move group up'
       throw err
@@ -198,24 +189,15 @@ export const useGroupStore = defineStore('group', () => {
     const index = sorted.findIndex((g) => g.id === groupId)
     if (index < 0 || index >= sorted.length - 1) return // Already at bottom or not found
 
-    const group = sorted[index]
     const targetGroup = sorted[index + 1]
     const newOrderIndex = targetGroup.orderIndex
 
     loading.value = true
     error.value = null
     try {
-      const updatedGroup = await groupApi.reorderGroup(groupId, newOrderIndex)
-      // Update the group in the store
-      const storeIndex = groups.value.findIndex((g) => g.id === groupId)
-      if (storeIndex !== -1) {
-        groups.value[storeIndex] = updatedGroup
-      }
-      // Update the target group's orderIndex locally (it was shifted up)
-      const targetStoreIndex = groups.value.findIndex((g) => g.id === targetGroup.id)
-      if (targetStoreIndex !== -1) {
-        groups.value[targetStoreIndex].orderIndex = group.orderIndex
-      }
+      await groupApi.reorderGroup(groupId, newOrderIndex)
+      // Refetch all groups to get updated orderIndex values
+      await fetchGroups()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to move group down'
       throw err
