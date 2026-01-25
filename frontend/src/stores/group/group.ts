@@ -206,6 +206,43 @@ export const useGroupStore = defineStore('group', () => {
     }
   }
 
+  async function reorderGroupToIndex(groupId: string, targetIndex: number) {
+    const sorted = filteredGroups.value
+    const currentIndex = sorted.findIndex((g) => g.id === groupId)
+    if (currentIndex === -1 || currentIndex === targetIndex) return
+
+    // Calculate the new orderIndex based on target position
+    let newOrderIndex: number
+    if (sorted.length === 0) {
+      newOrderIndex = 0
+    } else if (targetIndex <= 0) {
+      // Moving to the beginning
+      newOrderIndex = (sorted[0]?.orderIndex ?? 0) - 1
+    } else if (targetIndex >= sorted.length) {
+      // Moving to the end
+      newOrderIndex = (sorted[sorted.length - 1]?.orderIndex ?? 0) + 1
+    } else if (targetIndex > currentIndex) {
+      // Moving down - use the orderIndex of the target position
+      newOrderIndex = sorted[targetIndex]?.orderIndex ?? 0
+    } else {
+      // Moving up - use the orderIndex of the target position
+      newOrderIndex = sorted[targetIndex]?.orderIndex ?? 0
+    }
+
+    loading.value = true
+    error.value = null
+    try {
+      await groupApi.reorderGroup(groupId, newOrderIndex)
+      // Refetch all groups to get updated orderIndex values
+      await fetchGroups()
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to reorder group'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     groups,
     filteredGroups,
@@ -224,6 +261,7 @@ export const useGroupStore = defineStore('group', () => {
     deleteAllGroups,
     moveGroupUp,
     moveGroupDown,
+    reorderGroupToIndex,
   }
 })
 

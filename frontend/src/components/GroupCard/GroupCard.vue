@@ -29,6 +29,7 @@ const emit = defineEmits<Emits>()
 const bookmarkStore = useBookmarkStore()
 const isExpanded = ref(true)
 const isDragOver = ref(false)
+const isDragging = ref(false)
 
 const bookmarksCount = computed(() => props.bookmarks.length)
 
@@ -79,6 +80,21 @@ function extractNameFromUrl(urlString: string): string {
 
 function handleModify() {
   emit('modify', props.group)
+}
+
+// Group drag handlers for reordering
+function handleGroupDragStart(event: DragEvent) {
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('application/x-group-id', props.group.id)
+    // Also set text/plain for fallback, but prefix it to distinguish from bookmarks
+    event.dataTransfer.setData('text/plain', `group:${props.group.id}`)
+  }
+  isDragging.value = true
+}
+
+function handleGroupDragEnd() {
+  isDragging.value = false
 }
 
 function handleDragOver(event: DragEvent) {
@@ -204,9 +220,15 @@ async function handleDrop(event: DragEvent) {
 <template>
   <div
     data-drop-zone="group"
+    draggable="true"
     class="mb-6 rounded-lg bg-[var(--color-background-soft)] overflow-hidden transition-all duration-200 group-card"
-    :class="isDragOver ? 'border-2' : 'border border-[var(--color-border)]'"
+    :class="[
+      isDragOver ? 'border-2' : 'border border-[var(--color-border)]',
+      isDragging ? 'opacity-50' : ''
+    ]"
     :style="isDragOver ? { borderColor: group.color } : {}"
+    @dragstart="handleGroupDragStart"
+    @dragend="handleGroupDragEnd"
     @dragover="handleDragOver"
     @dragleave="handleDragLeave"
     @drop="handleDrop"
@@ -216,6 +238,27 @@ async function handleDrop(event: DragEvent) {
       @click="isExpanded = !isExpanded"
     >
       <div class="flex items-center gap-3 flex-1 min-w-0">
+        <!-- Drag handle -->
+        <div
+          class="cursor-grab active:cursor-grabbing opacity-40 hover:opacity-70 flex-shrink-0"
+          title="Drag to reorder"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            stroke="none"
+          >
+            <circle cx="9" cy="6" r="1.5" />
+            <circle cx="15" cy="6" r="1.5" />
+            <circle cx="9" cy="12" r="1.5" />
+            <circle cx="15" cy="12" r="1.5" />
+            <circle cx="9" cy="18" r="1.5" />
+            <circle cx="15" cy="18" r="1.5" />
+          </svg>
+        </div>
         <div
           class="w-4 h-4 rounded-full flex-shrink-0"
           :style="{ backgroundColor: group.color }"

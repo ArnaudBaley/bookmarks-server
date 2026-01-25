@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { useGroupStore } from '@/stores/group/group'
@@ -272,6 +272,79 @@ async function handleMoveGroupDown(group: Group) {
     await groupStore.moveGroupDown(group.id)
   } catch (err) {
     console.error('Error moving group down:', err)
+  }
+}
+
+// Group drag and drop reordering
+const groupDragOverIndex = ref<number | null>(null)
+const isDraggingGroup = ref(false)
+
+// Document-level listeners to detect group drag start/end
+function handleDocumentDragStart(event: DragEvent) {
+  // Check if it's a group drag by looking at the data transfer types
+  // We need a small delay because dataTransfer types aren't immediately available
+  setTimeout(() => {
+    if (event.dataTransfer?.types.includes('application/x-group-id')) {
+      isDraggingGroup.value = true
+    }
+  }, 0)
+}
+
+function handleDocumentDragEnd() {
+  isDraggingGroup.value = false
+  groupDragOverIndex.value = null
+}
+
+// Set up document-level drag listeners
+onMounted(() => {
+  document.addEventListener('dragstart', handleDocumentDragStart)
+  document.addEventListener('dragend', handleDocumentDragEnd)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('dragstart', handleDocumentDragStart)
+  document.removeEventListener('dragend', handleDocumentDragEnd)
+})
+
+function handleGroupDragOver(event: DragEvent, index: number) {
+  // Check if it's a group drag (not a bookmark or URL)
+  if (!event.dataTransfer?.types.includes('application/x-group-id')) return
+  
+  event.preventDefault()
+  event.stopPropagation()
+  event.dataTransfer.dropEffect = 'move'
+  groupDragOverIndex.value = index
+}
+
+function handleGroupDragLeave(event: DragEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  // Only reset the hover index if we're actually leaving the drop zone
+  const relatedTarget = event.relatedTarget as HTMLElement | null
+  if (!relatedTarget || !relatedTarget.closest('[data-group-drop-zone]')) {
+    groupDragOverIndex.value = null
+  }
+}
+
+function handleGroupDragEnd() {
+  groupDragOverIndex.value = null
+  isDraggingGroup.value = false
+}
+
+async function handleGroupDrop(event: DragEvent, targetIndex: number) {
+  event.preventDefault()
+  event.stopPropagation()
+  
+  const groupId = event.dataTransfer?.getData('application/x-group-id')
+  if (!groupId) return
+  
+  groupDragOverIndex.value = null
+  isDraggingGroup.value = false
+  
+  try {
+    await groupStore.reorderGroupToIndex(groupId, targetIndex)
+  } catch (err) {
+    console.error('Error reordering group:', err)
   }
 }
 
@@ -933,22 +1006,48 @@ function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null
       </div>
 
       <!-- Groups -->
-      <div v-if="filteredGroups.length > 0">
-        <GroupCard
-          v-for="(group, index) in filteredGroups"
-          :key="group.id"
-          :ref="(el) => setGroupCardRef(group, el as InstanceType<typeof GroupCard> | null)"
-          :group="group"
-          :bookmarks="groupStore.getBookmarksByGroup(group.id)"
-          :is-first="index === 0"
-          :is-last="index === filteredGroups.length - 1"
-          @modify="handleModifyGroup"
-          @move-up="handleMoveGroupUp(group)"
-          @move-down="handleMoveGroupDown(group)"
-          @bookmark-drop="handleBookmarkDrop"
-          @bookmark-modify="handleModifyBookmark"
-          @bookmark-delete="handleDeleteBookmark"
-          @bookmark-add="handleAddBookmarkFromGroup"
+      <div 
+        v-if="filteredGroups.length > 0" 
+        class="relative"
+        @dragend="handleGroupDragEnd"
+      >
+        <template v-for="(group, index) in filteredGroups" :key="group.id">
+          <!-- Drop zone before this group -->
+          <div
+            v-if="isDraggingGroup"
+            data-group-drop-zone
+            class="transition-all duration-150 rounded"
+            :class="groupDragOverIndex === index ? 'h-4 bg-blue-500/50 my-2' : 'h-4 bg-transparent'"
+            @dragover="handleGroupDragOver($event, index)"
+            @dragleave="handleGroupDragLeave"
+            @drop="handleGroupDrop($event, index)"
+          />
+          
+          <GroupCard
+            :ref="(el) => setGroupCardRef(group, el as InstanceType<typeof GroupCard> | null)"
+            :group="group"
+            :bookmarks="groupStore.getBookmarksByGroup(group.id)"
+            :is-first="index === 0"
+            :is-last="index === filteredGroups.length - 1"
+            @modify="handleModifyGroup"
+            @move-up="handleMoveGroupUp(group)"
+            @move-down="handleMoveGroupDown(group)"
+            @bookmark-drop="handleBookmarkDrop"
+            @bookmark-modify="handleModifyBookmark"
+            @bookmark-delete="handleDeleteBookmark"
+            @bookmark-add="handleAddBookmarkFromGroup"
+          />
+        </template>
+        
+        <!-- Drop zone after last group -->
+        <div
+          v-if="isDraggingGroup"
+          data-group-drop-zone
+          class="transition-all duration-150 rounded"
+          :class="groupDragOverIndex === filteredGroups.length ? 'h-4 bg-blue-500/50 my-2' : 'h-4 bg-transparent'"
+          @dragover="handleGroupDragOver($event, filteredGroups.length)"
+          @dragleave="handleGroupDragLeave"
+          @drop="handleGroupDrop($event, filteredGroups.length)"
         />
       </div>
 
