@@ -696,13 +696,38 @@ async function handleUngroupedDrop(event: DragEvent) {
 
   if (!event.dataTransfer) return
 
+  // Check if this is a group drag - ignore it
+  if (event.dataTransfer.types.includes('application/x-group-id')) {
+    return
+  }
+
   // Get all possible data types
   const textPlain = event.dataTransfer.getData('text/plain')
   const uriList = event.dataTransfer.getData('text/uri-list')
   const urlData = event.dataTransfer.getData('URL')
   const htmlData = event.dataTransfer.getData('text/html')
 
-  // First, check if text/plain is a bookmark ID (existing bookmark being moved)
+  // Check if this is a bookmark reorder drag (from a group)
+  if (event.dataTransfer.types.includes('application/x-bookmark-reorder')) {
+    const bookmarkId = event.dataTransfer.getData('application/x-bookmark-reorder')
+    if (bookmarkId) {
+      const bookmark = bookmarkStore.bookmarks.find((b) => b.id === bookmarkId)
+      if (bookmark) {
+        // Remove from all groups to make it ungrouped
+        try {
+          const groupIds = bookmark.groupIds || []
+          for (const groupId of groupIds) {
+            await groupStore.removeBookmarkFromGroup(groupId, bookmarkId)
+          }
+        } catch (error) {
+          console.error('Failed to remove bookmark from groups:', error)
+        }
+        return
+      }
+    }
+  }
+
+  // Check if text/plain is a bookmark ID (existing bookmark being moved, e.g., from ungrouped)
   if (textPlain) {
     const bookmark = bookmarkStore.bookmarks.find((b) => b.id === textPlain)
     if (bookmark) {

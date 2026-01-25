@@ -55,6 +55,9 @@ onUnmounted(() => {
 })
 
 function handleDragStart(event: DragEvent) {
+  // Stop propagation to prevent GroupCard from treating this as a group drag
+  event.stopPropagation()
+
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
     // Set bookmark ID in text/plain - we'll identify it by checking if it exists in the store
@@ -74,6 +77,9 @@ function handleDragStart(event: DragEvent) {
 }
 
 function handleDragEnd(event: DragEvent) {
+  // Stop propagation to prevent GroupCard from handling this event
+  event.stopPropagation()
+
   // Restore opacity
   if (event.target instanceof HTMLElement) {
     event.target.style.opacity = '1'
