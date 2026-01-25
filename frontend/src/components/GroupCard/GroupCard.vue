@@ -9,6 +9,8 @@ import BookmarkCard from '@/components/BookmarkCard/BookmarkCard.vue'
 interface Props {
   group: Group
   bookmarks: Bookmark[]
+  isFirst?: boolean
+  isLast?: boolean
 }
 
 interface Emits {
@@ -17,6 +19,8 @@ interface Emits {
   (e: 'bookmark-modify', bookmark: Bookmark): void
   (e: 'bookmark-delete', id: string): void
   (e: 'bookmark-add', groupId: string): void
+  (e: 'move-up'): void
+  (e: 'move-down'): void
 }
 
 const props = defineProps<Props>()
@@ -243,6 +247,50 @@ async function handleDrop(event: DragEvent) {
           >
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+        <button
+          class="p-1.5 flex-shrink-0 rounded cursor-pointer transition-opacity duration-200 active:scale-[0.95] text-[var(--color-text)]"
+          :class="isFirst ? 'opacity-20 cursor-not-allowed' : 'opacity-60 hover:opacity-100'"
+          :disabled="isFirst"
+          @click.stop="!isFirst && $emit('move-up')"
+          aria-label="Move group up"
+          title="Move group up"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+        </button>
+        <button
+          class="p-1.5 flex-shrink-0 rounded cursor-pointer transition-opacity duration-200 active:scale-[0.95] text-[var(--color-text)]"
+          :class="isLast ? 'opacity-20 cursor-not-allowed' : 'opacity-60 hover:opacity-100'"
+          :disabled="isLast"
+          @click.stop="!isLast && $emit('move-down')"
+          aria-label="Move group down"
+          title="Move group down"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
         <button

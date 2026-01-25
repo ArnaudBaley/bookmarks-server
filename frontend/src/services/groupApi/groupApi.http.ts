@@ -118,5 +118,24 @@ export class HttpGroupApi implements IGroupApi {
       throw error
     }
   }
+
+  async reorderGroup(id: string, newOrderIndex: number): Promise<Group> {
+    try {
+      const response = await fetch(`${this.baseUrl}/groups/${id}/reorder`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newOrderIndex }),
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to reorder group: ${response.statusText}`)
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('[HttpGroupApi] Error reordering group:', error)
+      throw error
+    }
+  }
 }
 

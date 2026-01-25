@@ -3,6 +3,7 @@ export interface Group {
   name: string
   color: string
   tabId: string
+  orderIndex: number
   createdAt?: string
   updatedAt?: string
 }

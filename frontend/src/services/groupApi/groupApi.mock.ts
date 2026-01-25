@@ -66,11 +66,17 @@ export class MockGroupApi implements IGroupApi {
     await this.simulateDelay()
 
     const groups = this.getGroupsStorage()
+    // Calculate the next orderIndex for the tab
+    const tabGroups = groups.filter((g) => g.tabId === data.tabId)
+    const maxOrderIndex = tabGroups.length > 0 
+      ? Math.max(...tabGroups.map((g) => g.orderIndex ?? 0)) 
+      : -1
     const newGroup: Group = {
       id: crypto.randomUUID(),
       name: data.name,
       color: data.color,
       tabId: data.tabId,
+      orderIndex: maxOrderIndex + 1,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -164,6 +170,50 @@ export class MockGroupApi implements IGroupApi {
     console.log('[MockGroupApi] Deleting all groups')
     await this.simulateDelay()
     this.setGroupsStorage([])
+  }
+
+  async reorderGroup(id: string, newOrderIndex: number): Promise<Group> {
+    console.log('[MockGroupApi] Reordering group:', id, 'to index:', newOrderIndex)
+    await this.simulateDelay()
+
+    const groups = this.getGroupsStorage()
+    const groupIndex = groups.findIndex((group) => group.id === id)
+    
+    if (groupIndex === -1) {
+      throw new Error(`Group with id ${id} not found`)
+    }
+
+    const group = groups[groupIndex]
+    const oldOrderIndex = group.orderIndex ?? 0
+    const tabId = group.tabId
+
+    if (newOrderIndex === oldOrderIndex) {
+      return group
+    }
+
+    // Shift other groups within the same tab
+    for (const g of groups) {
+      if (g.tabId === tabId && g.id !== id) {
+        const gOrderIndex = g.orderIndex ?? 0
+        if (newOrderIndex < oldOrderIndex) {
+          // Moving up: shift groups in [newOrderIndex, oldOrderIndex - 1] down by 1
+          if (gOrderIndex >= newOrderIndex && gOrderIndex < oldOrderIndex) {
+            g.orderIndex = gOrderIndex + 1
+          }
+        } else {
+          // Moving down: shift groups in [oldOrderIndex + 1, newOrderIndex] up by 1
+          if (gOrderIndex > oldOrderIndex && gOrderIndex <= newOrderIndex) {
+            g.orderIndex = gOrderIndex - 1
+          }
+        }
+      }
+    }
+
+    group.orderIndex = newOrderIndex
+    group.updatedAt = new Date().toISOString()
+    groups[groupIndex] = group
+    this.setGroupsStorage(groups)
+    return group
   }
 
   /**

@@ -85,6 +85,14 @@ Content-Type: application/json
   "tabId": "{{tabId}}"
 }
 
+### Reorder a group (change its position within the tab)
+PATCH {{baseUrl}}/groups/{{groupId}}/reorder
+Content-Type: application/json
+
+{
+  "newOrderIndex": 0
+}
+
 ### Delete a group
 DELETE {{baseUrl}}/groups/{{groupId}}
 

@@ -157,6 +157,7 @@ export function createGroup(overrides?: Partial<Group>): Group {
     name: 'Test Group',
     color: '#3b82f6',
     tabId: 'test-tab-id',
+    orderIndex: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,

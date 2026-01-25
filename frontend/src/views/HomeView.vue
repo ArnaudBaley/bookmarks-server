@@ -259,6 +259,22 @@ async function handleModifyGroup(group: Group) {
   editingGroup.value = group
 }
 
+async function handleMoveGroupUp(group: Group) {
+  try {
+    await groupStore.moveGroupUp(group.id)
+  } catch (err) {
+    console.error('Error moving group up:', err)
+  }
+}
+
+async function handleMoveGroupDown(group: Group) {
+  try {
+    await groupStore.moveGroupDown(group.id)
+  } catch (err) {
+    console.error('Error moving group down:', err)
+  }
+}
+
 async function handleUpdateGroup(id: string, data: UpdateGroupDto) {
   try {
     // Extract targetTabIds before updating (since we'll remove it from the update data)
@@ -919,12 +935,16 @@ function setGroupCardRef(group: Group, el: InstanceType<typeof GroupCard> | null
       <!-- Groups -->
       <div v-if="filteredGroups.length > 0">
         <GroupCard
-          v-for="group in filteredGroups"
+          v-for="(group, index) in filteredGroups"
           :key="group.id"
           :ref="(el) => setGroupCardRef(group, el as InstanceType<typeof GroupCard> | null)"
           :group="group"
           :bookmarks="groupStore.getBookmarksByGroup(group.id)"
+          :is-first="index === 0"
+          :is-last="index === filteredGroups.length - 1"
           @modify="handleModifyGroup"
+          @move-up="handleMoveGroupUp(group)"
+          @move-down="handleMoveGroupDown(group)"
           @bookmark-drop="handleBookmarkDrop"
           @bookmark-modify="handleModifyBookmark"
           @bookmark-delete="handleDeleteBookmark"

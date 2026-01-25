@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Group } from '../entities/group.entity';
 import { Bookmark } from '../entities/bookmark.entity';
@@ -21,6 +21,7 @@ export class GroupsService {
     return this.groupRepository.find({
       where,
       relations: ['bookmarks'],
+      order: { orderIndex: 'ASC' },
     });
   }
 
@@ -36,11 +37,21 @@ export class GroupsService {
   }
 
   async create(createGroupDto: CreateGroupDto): Promise<Group> {
+    // Calculate the next orderIndex for the tab
+    const tabId = createGroupDto.tabId || null;
+    const maxOrderResult = await this.groupRepository
+      .createQueryBuilder('group')
+      .where('group.tabId = :tabId', { tabId })
+      .select('MAX(group.orderIndex)', 'max')
+      .getRawOne();
+    const orderIndex = (maxOrderResult?.max ?? -1) + 1;
+
     const group = this.groupRepository.create({
       id: uuidv4(),
       name: createGroupDto.name,
       color: createGroupDto.color,
-      tabId: createGroupDto.tabId || null,
+      tabId,
+      orderIndex,
     });
     return this.groupRepository.save(group);
   }
@@ -63,6 +74,40 @@ export class GroupsService {
   async remove(id: string): Promise<void> {
     const group = await this.findOne(id);
     await this.groupRepository.remove(group);
+  }
+
+  async reorder(id: string, newOrderIndex: number): Promise<Group> {
+    const group = await this.findOne(id);
+    const oldOrderIndex = group.orderIndex;
+    const tabId = group.tabId;
+
+    if (newOrderIndex === oldOrderIndex) {
+      return group;
+    }
+
+    // Build the tabId condition - use IsNull() for null values
+    const tabIdCondition = tabId === null ? IsNull() : tabId;
+
+    // Shift other groups within the same tab
+    if (newOrderIndex < oldOrderIndex) {
+      // Moving up: shift groups in [newOrderIndex, oldOrderIndex - 1] down by 1
+      await this.groupRepository.increment(
+        { tabId: tabIdCondition, orderIndex: Between(newOrderIndex, oldOrderIndex - 1) },
+        'orderIndex',
+        1,
+      );
+    } else {
+      // Moving down: shift groups in [oldOrderIndex + 1, newOrderIndex] up by 1
+      await this.groupRepository.decrement(
+        { tabId: tabIdCondition, orderIndex: Between(oldOrderIndex + 1, newOrderIndex) },
+        'orderIndex',
+        1,
+      );
+    }
+
+    group.orderIndex = newOrderIndex;
+    await this.groupRepository.save(group);
+    return this.findOne(id);
   }
 
   async addBookmarkToGroup(groupId: string, bookmarkId: string): Promise<void> {

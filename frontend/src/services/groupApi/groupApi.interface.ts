@@ -55,5 +55,13 @@ export interface IGroupApi {
    * @returns Promise that resolves when all groups are deleted
    */
   deleteAllGroups(): Promise<void>
+
+  /**
+   * Reorder a group within its tab
+   * @param id - The ID of the group to reorder
+   * @param newOrderIndex - The new order index for the group
+   * @returns Promise resolving to the updated group
+   */
+  reorderGroup(id: string, newOrderIndex: number): Promise<Group>
 }
 

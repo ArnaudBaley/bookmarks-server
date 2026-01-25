@@ -754,6 +754,7 @@ describe('ExportImportModal', () => {
           name: 'My Folder',
           color: '#3b82f6',
           tabId: 'new-tab-id',
+          orderIndex: 0,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })

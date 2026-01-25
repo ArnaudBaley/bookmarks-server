@@ -10,12 +10,21 @@ import { UpdateGroupDto } from './dto/update-group.dto';
 describe('GroupsService', () => {
   let service: GroupsService;
 
+  const mockQueryBuilder = {
+    where: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    getRawOne: jest.fn().mockResolvedValue({ max: null }),
+  };
+
   const mockGroupRepository = {
     find: jest.fn(),
     findOne: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
     remove: jest.fn(),
+    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+    increment: jest.fn(),
+    decrement: jest.fn(),
   };
 
   const mockBookmarkRepository = {
@@ -73,6 +82,7 @@ describe('GroupsService', () => {
       expect(mockGroupRepository.find).toHaveBeenCalledWith({
         where: {},
         relations: ['bookmarks'],
+        order: { orderIndex: 'ASC' },
       });
     });
 
@@ -94,6 +104,7 @@ describe('GroupsService', () => {
       expect(mockGroupRepository.find).toHaveBeenCalledWith({
         where: { tabId: 'tab-1' },
         relations: ['bookmarks'],
+        order: { orderIndex: 'ASC' },
       });
     });
   });
@@ -131,7 +142,7 @@ describe('GroupsService', () => {
   });
 
   describe('create', () => {
-    it('should create a group', async () => {
+    it('should create a group with auto-assigned orderIndex', async () => {
       const createDto: CreateGroupDto = {
         name: 'New Group',
         color: '#3b82f6',
@@ -140,8 +151,42 @@ describe('GroupsService', () => {
       const mockCreatedGroup = {
         id: 'new-id',
         ...createDto,
+        orderIndex: 0,
       };
 
+      mockQueryBuilder.getRawOne.mockResolvedValue({ max: null });
+      mockGroupRepository.create.mockReturnValue(mockCreatedGroup);
+      mockGroupRepository.save.mockResolvedValue(mockCreatedGroup);
+
+      const result = await service.create(createDto);
+
+      expect(result).toEqual(mockCreatedGroup);
+      expect(mockGroupRepository.createQueryBuilder).toHaveBeenCalledWith(
+        'group',
+      );
+      expect(mockGroupRepository.create).toHaveBeenCalledWith({
+        id: expect.any(String) as string,
+        name: createDto.name,
+        color: createDto.color,
+        tabId: createDto.tabId,
+        orderIndex: 0,
+      });
+      expect(mockGroupRepository.save).toHaveBeenCalled();
+    });
+
+    it('should assign next orderIndex when groups exist', async () => {
+      const createDto: CreateGroupDto = {
+        name: 'New Group',
+        color: '#3b82f6',
+        tabId: 'tab-1',
+      };
+      const mockCreatedGroup = {
+        id: 'new-id',
+        ...createDto,
+        orderIndex: 3,
+      };
+
+      mockQueryBuilder.getRawOne.mockResolvedValue({ max: 2 });
       mockGroupRepository.create.mockReturnValue(mockCreatedGroup);
       mockGroupRepository.save.mockResolvedValue(mockCreatedGroup);
 
@@ -153,8 +198,8 @@ describe('GroupsService', () => {
         name: createDto.name,
         color: createDto.color,
         tabId: createDto.tabId,
+        orderIndex: 3,
       });
-      expect(mockGroupRepository.save).toHaveBeenCalled();
     });
 
     it('should handle null tabId', async () => {
@@ -167,8 +212,10 @@ describe('GroupsService', () => {
         name: createDto.name,
         color: createDto.color,
         tabId: null,
+        orderIndex: 0,
       };
 
+      mockQueryBuilder.getRawOne.mockResolvedValue({ max: null });
       mockGroupRepository.create.mockReturnValue(mockCreatedGroup);
       mockGroupRepository.save.mockResolvedValue(mockCreatedGroup);
 
@@ -180,6 +227,7 @@ describe('GroupsService', () => {
         name: createDto.name,
         color: createDto.color,
         tabId: null,
+        orderIndex: 0,
       });
     });
   });
@@ -284,6 +332,82 @@ describe('GroupsService', () => {
       mockGroupRepository.findOne.mockResolvedValue(null);
 
       await expect(service.remove('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('reorder', () => {
+    it('should return group unchanged when new order equals old order', async () => {
+      const mockGroup = {
+        id: '1',
+        name: 'Group',
+        color: '#3b82f6',
+        tabId: 'tab-1',
+        orderIndex: 2,
+        bookmarks: [],
+      };
+      mockGroupRepository.findOne.mockResolvedValue(mockGroup);
+
+      const result = await service.reorder('1', 2);
+
+      expect(result).toEqual(mockGroup);
+      expect(mockGroupRepository.increment).not.toHaveBeenCalled();
+      expect(mockGroupRepository.decrement).not.toHaveBeenCalled();
+    });
+
+    it('should move group up and shift others down', async () => {
+      const mockGroup = {
+        id: '1',
+        name: 'Group',
+        color: '#3b82f6',
+        tabId: 'tab-1',
+        orderIndex: 3,
+        bookmarks: [],
+      };
+      const updatedGroup = { ...mockGroup, orderIndex: 1 };
+
+      mockGroupRepository.findOne
+        .mockResolvedValueOnce(mockGroup)
+        .mockResolvedValueOnce(updatedGroup);
+      mockGroupRepository.increment.mockResolvedValue({});
+      mockGroupRepository.save.mockResolvedValue(updatedGroup);
+
+      const result = await service.reorder('1', 1);
+
+      expect(result.orderIndex).toBe(1);
+      expect(mockGroupRepository.increment).toHaveBeenCalled();
+      expect(mockGroupRepository.decrement).not.toHaveBeenCalled();
+    });
+
+    it('should move group down and shift others up', async () => {
+      const mockGroup = {
+        id: '1',
+        name: 'Group',
+        color: '#3b82f6',
+        tabId: 'tab-1',
+        orderIndex: 1,
+        bookmarks: [],
+      };
+      const updatedGroup = { ...mockGroup, orderIndex: 3 };
+
+      mockGroupRepository.findOne
+        .mockResolvedValueOnce(mockGroup)
+        .mockResolvedValueOnce(updatedGroup);
+      mockGroupRepository.decrement.mockResolvedValue({});
+      mockGroupRepository.save.mockResolvedValue(updatedGroup);
+
+      const result = await service.reorder('1', 3);
+
+      expect(result.orderIndex).toBe(3);
+      expect(mockGroupRepository.decrement).toHaveBeenCalled();
+      expect(mockGroupRepository.increment).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when group not found', async () => {
+      mockGroupRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.reorder('non-existent', 1)).rejects.toThrow(
         NotFoundException,
       );
     });

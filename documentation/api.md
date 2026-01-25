@@ -176,11 +176,14 @@ Retrieve all groups, optionally filtered by tab.
     "name": "Development",
     "color": "#3b82f6",
     "tabId": "uuid-string",
+    "orderIndex": 0,
     "createdAt": "2024-01-01T00:00:00.000Z",
     "updatedAt": "2024-01-01T00:00:00.000Z"
   }
 ]
 ```
+
+**Note**: Groups are returned sorted by `orderIndex` in ascending order.
 
 ### Create Group
 
@@ -209,10 +212,13 @@ Create a new group.
   "name": "Development",
   "color": "#3b82f6",
   "tabId": "uuid-string",
+  "orderIndex": 0,
   "createdAt": "2024-01-01T00:00:00.000Z",
   "updatedAt": "2024-01-01T00:00:00.000Z"
 }
 ```
+
+**Note**: New groups are automatically assigned an `orderIndex` based on existing groups in the tab (max + 1).
 
 ### Update Group
 
@@ -239,10 +245,45 @@ Update an existing group.
   "name": "Updated Group Name",
   "color": "#10b981",
   "tabId": "uuid-string",
+  "orderIndex": 0,
   "createdAt": "2024-01-01T00:00:00.000Z",
   "updatedAt": "2024-01-01T00:00:00.000Z"
 }
 ```
+
+### Reorder Group
+
+Change the order of a group within its tab.
+
+**Endpoint**: `PATCH /groups/:id/reorder`
+
+**Path Parameters**:
+- `id` (string): Group UUID
+
+**Request Body**:
+```json
+{
+  "newOrderIndex": 0
+}
+```
+
+**Validation Rules**:
+- `newOrderIndex`: Required, number
+
+**Response**: `200 OK`
+```json
+{
+  "id": "uuid-string",
+  "name": "Group Name",
+  "color": "#3b82f6",
+  "tabId": "uuid-string",
+  "orderIndex": 0,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**Note**: When a group is reordered, other groups in the same tab are automatically shifted to maintain consistent ordering.
 
 ### Delete Group
 

@@ -67,6 +67,7 @@ describe('useExportData', () => {
         name: 'Test Group',
         color: '#10b981',
         tabId: 'tab-1',
+        orderIndex: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -13,6 +14,7 @@ import {
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
+import { ReorderGroupDto } from './dto/reorder-group.dto';
 
 @Controller('groups')
 export class GroupsController {
@@ -26,6 +28,7 @@ export class GroupsController {
       name: group.name,
       color: group.color,
       tabId: group.tabId,
+      orderIndex: group.orderIndex,
       createdAt: group.createdAt?.toISOString(),
       updatedAt: group.updatedAt?.toISOString(),
     }));
@@ -39,6 +42,7 @@ export class GroupsController {
       name: group.name,
       color: group.color,
       tabId: group.tabId,
+      orderIndex: group.orderIndex,
       createdAt: group.createdAt?.toISOString(),
       updatedAt: group.updatedAt?.toISOString(),
     };
@@ -55,6 +59,27 @@ export class GroupsController {
       name: group.name,
       color: group.color,
       tabId: group.tabId,
+      orderIndex: group.orderIndex,
+      createdAt: group.createdAt?.toISOString(),
+      updatedAt: group.updatedAt?.toISOString(),
+    };
+  }
+
+  @Patch(':id/reorder')
+  async reorder(
+    @Param('id') id: string,
+    @Body() reorderGroupDto: ReorderGroupDto,
+  ) {
+    const group = await this.groupsService.reorder(
+      id,
+      reorderGroupDto.newOrderIndex,
+    );
+    return {
+      id: group.id,
+      name: group.name,
+      color: group.color,
+      tabId: group.tabId,
+      orderIndex: group.orderIndex,
       createdAt: group.createdAt?.toISOString(),
       updatedAt: group.updatedAt?.toISOString(),
     };

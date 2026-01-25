@@ -25,6 +25,9 @@ export class Group {
   @Column('varchar', { length: 36, nullable: true })
   tabId: string | null;
 
+  @Column('integer', { default: 0 })
+  orderIndex: number;
+
   @ManyToOne(() => Tab)
   @JoinColumn({ name: 'tabId' })
   tab: Tab;
