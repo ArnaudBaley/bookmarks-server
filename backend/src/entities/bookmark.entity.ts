@@ -4,6 +4,7 @@ import {
   Column,
   ManyToMany,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   JoinTable,
   CreateDateColumn,
@@ -11,6 +12,7 @@ import {
 } from 'typeorm';
 import { Group } from './group.entity';
 import { Tab } from './tab.entity';
+import { BookmarkGroup } from './bookmark-group.entity';
 
 @Entity('bookmarks')
 export class Bookmark {
@@ -38,13 +40,19 @@ export class Bookmark {
   })
   tabs: Tab[];
 
-  @ManyToMany(() => Group, (group) => group.bookmarks)
-  @JoinTable({
-    name: 'bookmark_groups',
-    joinColumn: { name: 'bookmark_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'group_id', referencedColumnName: 'id' },
+  @OneToMany(() => BookmarkGroup, (bookmarkGroup) => bookmarkGroup.bookmark, {
+    cascade: true,
   })
-  groups: Group[];
+  bookmarkGroups: BookmarkGroup[];
+
+  // Virtual property for backward compatibility - returns groups from bookmarkGroups
+  get groups(): Group[] {
+    if (!this.bookmarkGroups) return [];
+    return this.bookmarkGroups
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((bg) => bg.group)
+      .filter((g) => g !== undefined);
+  }
 
   @CreateDateColumn()
   createdAt: Date;

@@ -15,6 +15,7 @@ import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { ReorderGroupDto } from './dto/reorder-group.dto';
+import { ReorderBookmarkDto } from './dto/reorder-bookmark.dto';
 
 @Controller('groups')
 export class GroupsController {
@@ -113,5 +114,19 @@ export class GroupsController {
     @Param('bookmarkId') bookmarkId: string,
   ) {
     await this.groupsService.removeBookmarkFromGroup(groupId, bookmarkId);
+  }
+
+  @Patch(':groupId/bookmarks/:bookmarkId/reorder')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async reorderBookmarkInGroup(
+    @Param('groupId') groupId: string,
+    @Param('bookmarkId') bookmarkId: string,
+    @Body() reorderBookmarkDto: ReorderBookmarkDto,
+  ) {
+    await this.groupsService.reorderBookmarkInGroup(
+      groupId,
+      bookmarkId,
+      reorderBookmarkDto.newOrderIndex,
+    );
   }
 }

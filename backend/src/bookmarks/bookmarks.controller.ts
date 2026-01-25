@@ -21,28 +21,42 @@ export class BookmarksController {
   @Get()
   async findAll(@Query('tabId') tabId?: string) {
     const bookmarks = await this.bookmarksService.findAll(tabId);
-    return bookmarks.map((bookmark) => ({
-      id: bookmark.id,
-      name: bookmark.name,
-      url: bookmark.url,
-      tabId: bookmark.tabId, // Keep for backward compatibility
-      tabIds: bookmark.tabs?.map((tab) => tab.id) || [],
-      groupIds: bookmark.groups?.map((group) => group.id) || [],
-      createdAt: bookmark.createdAt?.toISOString(),
-      updatedAt: bookmark.updatedAt?.toISOString(),
-    }));
+    return bookmarks.map((bookmark) => {
+      // Build groupOrderIndexes map for per-group ordering
+      const groupOrderIndexes: Record<string, number> = {};
+      bookmark.bookmarkGroups?.forEach((bg) => {
+        groupOrderIndexes[bg.groupId] = bg.orderIndex;
+      });
+      return {
+        id: bookmark.id,
+        name: bookmark.name,
+        url: bookmark.url,
+        tabId: bookmark.tabId, // Keep for backward compatibility
+        tabIds: bookmark.tabs?.map((tab) => tab.id) || [],
+        groupIds: bookmark.bookmarkGroups?.map((bg) => bg.groupId) || [],
+        groupOrderIndexes,
+        createdAt: bookmark.createdAt?.toISOString(),
+        updatedAt: bookmark.updatedAt?.toISOString(),
+      };
+    });
   }
 
   @Post()
   async create(@Body() createBookmarkDto: CreateBookmarkDto) {
     const bookmark = await this.bookmarksService.create(createBookmarkDto);
+    // Build groupOrderIndexes map for per-group ordering
+    const groupOrderIndexes: Record<string, number> = {};
+    bookmark.bookmarkGroups?.forEach((bg) => {
+      groupOrderIndexes[bg.groupId] = bg.orderIndex;
+    });
     return {
       id: bookmark.id,
       name: bookmark.name,
       url: bookmark.url,
       tabId: bookmark.tabId, // Keep for backward compatibility
       tabIds: bookmark.tabs?.map((tab) => tab.id) || [],
-      groupIds: bookmark.groups?.map((group) => group.id) || [],
+      groupIds: bookmark.bookmarkGroups?.map((bg) => bg.groupId) || [],
+      groupOrderIndexes,
       createdAt: bookmark.createdAt?.toISOString(),
       updatedAt: bookmark.updatedAt?.toISOString(),
     };
@@ -54,13 +68,19 @@ export class BookmarksController {
     @Body() updateBookmarkDto: UpdateBookmarkDto,
   ) {
     const bookmark = await this.bookmarksService.update(id, updateBookmarkDto);
+    // Build groupOrderIndexes map for per-group ordering
+    const groupOrderIndexes: Record<string, number> = {};
+    bookmark.bookmarkGroups?.forEach((bg) => {
+      groupOrderIndexes[bg.groupId] = bg.orderIndex;
+    });
     return {
       id: bookmark.id,
       name: bookmark.name,
       url: bookmark.url,
       tabId: bookmark.tabId, // Keep for backward compatibility
       tabIds: bookmark.tabs?.map((tab) => tab.id) || [],
-      groupIds: bookmark.groups?.map((group) => group.id) || [],
+      groupIds: bookmark.bookmarkGroups?.map((bg) => bg.groupId) || [],
+      groupOrderIndexes,
       createdAt: bookmark.createdAt?.toISOString(),
       updatedAt: bookmark.updatedAt?.toISOString(),
     };

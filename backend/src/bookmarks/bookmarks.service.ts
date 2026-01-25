@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Bookmark } from '../entities/bookmark.entity';
 import { Group } from '../entities/group.entity';
 import { Tab } from '../entities/tab.entity';
+import { BookmarkGroup } from '../entities/bookmark-group.entity';
 import { CreateBookmarkDto } from './dto/create-bookmark.dto';
 import { UpdateBookmarkDto } from './dto/update-bookmark.dto';
 
@@ -17,13 +18,16 @@ export class BookmarksService {
     private groupRepository: Repository<Group>,
     @InjectRepository(Tab)
     private tabRepository: Repository<Tab>,
+    @InjectRepository(BookmarkGroup)
+    private bookmarkGroupRepository: Repository<BookmarkGroup>,
   ) {}
 
   async findAll(tabId?: string): Promise<Bookmark[]> {
     const queryBuilder = this.bookmarkRepository
       .createQueryBuilder('bookmark')
       .distinct(true)
-      .leftJoinAndSelect('bookmark.groups', 'groups')
+      .leftJoinAndSelect('bookmark.bookmarkGroups', 'bookmarkGroups')
+      .leftJoinAndSelect('bookmarkGroups.group', 'group')
       .leftJoinAndSelect('bookmark.tabs', 'tabs');
 
     if (tabId) {
@@ -39,7 +43,7 @@ export class BookmarksService {
   async findOne(id: string): Promise<Bookmark> {
     const bookmark = await this.bookmarkRepository.findOne({
       where: { id },
-      relations: ['groups', 'tabs'],
+      relations: ['bookmarkGroups', 'bookmarkGroups.group', 'tabs'],
     });
     if (!bookmark) {
       throw new NotFoundException(`Bookmark with ID ${id} not found`);
@@ -75,14 +79,28 @@ export class BookmarksService {
       }
     }
 
+    const saved = await this.bookmarkRepository.save(bookmark);
+
+    // Handle group assignments with orderIndex
     if (createBookmarkDto.groupIds && createBookmarkDto.groupIds.length > 0) {
-      const groups = await this.groupRepository.findBy({
-        id: In(createBookmarkDto.groupIds),
-      });
-      bookmark.groups = groups;
+      for (const groupId of createBookmarkDto.groupIds) {
+        // Calculate the next orderIndex for this group
+        const maxOrderResult = await this.bookmarkGroupRepository
+          .createQueryBuilder('bg')
+          .where('bg.group_id = :groupId', { groupId })
+          .select('MAX(bg.orderIndex)', 'max')
+          .getRawOne();
+        const orderIndex = (maxOrderResult?.max ?? -1) + 1;
+
+        const bookmarkGroup = this.bookmarkGroupRepository.create({
+          bookmarkId: saved.id,
+          groupId,
+          orderIndex,
+        });
+        await this.bookmarkGroupRepository.save(bookmarkGroup);
+      }
     }
 
-    const saved = await this.bookmarkRepository.save(bookmark);
     return this.findOne(saved.id);
   }
 
@@ -140,13 +158,43 @@ export class BookmarksService {
     }
 
     if (updateBookmarkDto.groupIds !== undefined) {
-      if (updateBookmarkDto.groupIds.length > 0) {
-        const groups = await this.groupRepository.findBy({
-          id: In(updateBookmarkDto.groupIds),
+      // Get current group IDs
+      const currentGroupIds =
+        bookmark.bookmarkGroups?.map((bg) => bg.groupId) || [];
+      const newGroupIds = updateBookmarkDto.groupIds;
+
+      // Find groups to remove and groups to add
+      const groupsToRemove = currentGroupIds.filter(
+        (gid) => !newGroupIds.includes(gid),
+      );
+      const groupsToAdd = newGroupIds.filter(
+        (gid) => !currentGroupIds.includes(gid),
+      );
+
+      // Remove old group relationships
+      for (const groupId of groupsToRemove) {
+        await this.bookmarkGroupRepository.delete({
+          bookmarkId: id,
+          groupId,
         });
-        bookmark.groups = groups;
-      } else {
-        bookmark.groups = [];
+      }
+
+      // Add new group relationships
+      for (const groupId of groupsToAdd) {
+        // Calculate the next orderIndex for this group
+        const maxOrderResult = await this.bookmarkGroupRepository
+          .createQueryBuilder('bg')
+          .where('bg.group_id = :groupId', { groupId })
+          .select('MAX(bg.orderIndex)', 'max')
+          .getRawOne();
+        const orderIndex = (maxOrderResult?.max ?? -1) + 1;
+
+        const bookmarkGroup = this.bookmarkGroupRepository.create({
+          bookmarkId: id,
+          groupId,
+          orderIndex,
+        });
+        await this.bookmarkGroupRepository.save(bookmarkGroup);
       }
     }
 

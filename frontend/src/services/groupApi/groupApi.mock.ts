@@ -216,6 +216,24 @@ export class MockGroupApi implements IGroupApi {
     return group
   }
 
+  async reorderBookmarkInGroup(
+    groupId: string,
+    bookmarkId: string,
+    newOrderIndex: number,
+  ): Promise<void> {
+    console.log(
+      '[MockGroupApi] Reordering bookmark:',
+      bookmarkId,
+      'in group:',
+      groupId,
+      'to index:',
+      newOrderIndex,
+    )
+    await this.simulateDelay()
+    // Mock implementation - in real usage, this would update bookmark order storage
+    // For mock purposes, we just simulate the API call
+  }
+
   /**
    * Clear all mock data (useful for testing)
    */

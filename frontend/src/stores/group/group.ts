@@ -136,9 +136,13 @@ export const useGroupStore = defineStore('group', () => {
 
   function getBookmarksByGroup(groupId: string) {
     const bookmarkStore = useBookmarkStore()
-    return bookmarkStore.filteredBookmarks.filter(
-      (bookmark) => bookmark.groupIds?.includes(groupId)
-    )
+    return bookmarkStore.filteredBookmarks
+      .filter((bookmark) => bookmark.groupIds?.includes(groupId))
+      .sort((a, b) => {
+        const orderA = a.groupOrderIndexes?.[groupId] ?? 0
+        const orderB = b.groupOrderIndexes?.[groupId] ?? 0
+        return orderA - orderB
+      })
   }
 
   function getUngroupedBookmarks() {
@@ -243,6 +247,72 @@ export const useGroupStore = defineStore('group', () => {
     }
   }
 
+  /**
+   * Reorder a bookmark within a group to a specific position
+   */
+  async function reorderBookmarkInGroup(
+    groupId: string,
+    bookmarkId: string,
+    bookmarks: { id: string }[],
+    targetIndex: number,
+  ) {
+    console.log('reorderBookmarkInGroup called:', { groupId, bookmarkId, targetIndex, bookmarksLength: bookmarks.length })
+    
+    // Find current index of the bookmark in the list
+    const currentIndex = bookmarks.findIndex((b) => b.id === bookmarkId)
+    console.log('currentIndex:', currentIndex)
+    
+    if (currentIndex === -1) {
+      console.log('Bookmark not found in list')
+      return
+    }
+    
+    if (currentIndex === targetIndex) {
+      console.log('Same position, no reorder needed')
+      return
+    }
+    
+    // Also skip if dropping right after the current position (no actual move)
+    if (targetIndex === currentIndex + 1) {
+      console.log('Dropping immediately after current position, no reorder needed')
+      return
+    }
+
+    // Calculate the new orderIndex based on the target position
+    // When moving down, we need to subtract 1 because after removing the item,
+    // all subsequent items shift up
+    let newOrderIndex: number
+    if (targetIndex === 0) {
+      // Moving to the beginning
+      newOrderIndex = 0
+    } else if (targetIndex >= bookmarks.length) {
+      // Moving to the end
+      newOrderIndex = bookmarks.length - 1
+    } else if (targetIndex > currentIndex) {
+      // Moving down - subtract 1 to account for item removal
+      newOrderIndex = targetIndex - 1
+    } else {
+      // Moving up
+      newOrderIndex = targetIndex
+    }
+    
+    console.log('Calling API with newOrderIndex:', newOrderIndex)
+
+    loading.value = true
+    error.value = null
+    try {
+      await groupApi.reorderBookmarkInGroup(groupId, bookmarkId, newOrderIndex)
+      // Refresh bookmarks to get updated groupOrderIndexes
+      const bookmarkStore = useBookmarkStore()
+      await bookmarkStore.fetchBookmarks()
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to reorder bookmark'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     groups,
     filteredGroups,
@@ -262,6 +332,7 @@ export const useGroupStore = defineStore('group', () => {
     moveGroupUp,
     moveGroupDown,
     reorderGroupToIndex,
+    reorderBookmarkInGroup,
   }
 })
 

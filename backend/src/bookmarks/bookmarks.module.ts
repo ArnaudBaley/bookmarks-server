@@ -5,9 +5,10 @@ import { BookmarksService } from './bookmarks.service';
 import { Bookmark } from '../entities/bookmark.entity';
 import { Group } from '../entities/group.entity';
 import { Tab } from '../entities/tab.entity';
+import { BookmarkGroup } from '../entities/bookmark-group.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Bookmark, Group, Tab])],
+  imports: [TypeOrmModule.forFeature([Bookmark, Group, Tab, BookmarkGroup])],
   controllers: [BookmarksController],
   providers: [BookmarksService],
 })

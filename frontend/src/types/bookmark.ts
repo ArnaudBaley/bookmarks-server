@@ -5,6 +5,7 @@ export interface Bookmark {
   tabId?: string // Keep for backward compatibility, but prefer tabIds
   tabIds?: string[]
   groupIds?: string[]
+  groupOrderIndexes?: Record<string, number> // Per-group order index
   createdAt?: string
   updatedAt?: string
 }

@@ -2,14 +2,14 @@ import {
   Entity,
   PrimaryColumn,
   Column,
-  ManyToMany,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Bookmark } from './bookmark.entity';
 import { Tab } from './tab.entity';
+import { BookmarkGroup } from './bookmark-group.entity';
 
 @Entity('groups')
 export class Group {
@@ -32,8 +32,10 @@ export class Group {
   @JoinColumn({ name: 'tabId' })
   tab: Tab;
 
-  @ManyToMany(() => Bookmark, (bookmark) => bookmark.groups)
-  bookmarks: Bookmark[];
+  @OneToMany(() => BookmarkGroup, (bookmarkGroup) => bookmarkGroup.group, {
+    cascade: true,
+  })
+  bookmarkGroups: BookmarkGroup[];
 
   @CreateDateColumn()
   createdAt: Date;

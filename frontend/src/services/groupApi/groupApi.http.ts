@@ -137,5 +137,30 @@ export class HttpGroupApi implements IGroupApi {
       throw error
     }
   }
+
+  async reorderBookmarkInGroup(
+    groupId: string,
+    bookmarkId: string,
+    newOrderIndex: number,
+  ): Promise<void> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/groups/${groupId}/bookmarks/${bookmarkId}/reorder`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ newOrderIndex }),
+        },
+      )
+      if (!response.ok) {
+        throw new Error(`Failed to reorder bookmark in group: ${response.statusText}`)
+      }
+    } catch (error) {
+      console.error('[HttpGroupApi] Error reordering bookmark in group:', error)
+      throw error
+    }
+  }
 }
 

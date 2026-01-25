@@ -63,5 +63,18 @@ export interface IGroupApi {
    * @returns Promise resolving to the updated group
    */
   reorderGroup(id: string, newOrderIndex: number): Promise<Group>
+
+  /**
+   * Reorder a bookmark within a group
+   * @param groupId - The ID of the group
+   * @param bookmarkId - The ID of the bookmark to reorder
+   * @param newOrderIndex - The new order index for the bookmark within the group
+   * @returns Promise that resolves when the bookmark is reordered
+   */
+  reorderBookmarkInGroup(
+    groupId: string,
+    bookmarkId: string,
+    newOrderIndex: number,
+  ): Promise<void>
 }
 

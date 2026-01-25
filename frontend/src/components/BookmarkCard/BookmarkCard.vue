@@ -4,11 +4,14 @@ import type { Bookmark } from '@/types/bookmark'
 
 interface Props {
   bookmark: Bookmark
+  groupId?: string // Group this bookmark belongs to (for reordering context)
 }
 
 interface Emits {
   (e: 'modify', bookmark: Bookmark): void
   (e: 'delete', id: string): void
+  (e: 'drag-start'): void
+  (e: 'drag-end'): void
 }
 
 const props = defineProps<Props>()
@@ -56,11 +59,18 @@ function handleDragStart(event: DragEvent) {
     event.dataTransfer.effectAllowed = 'move'
     // Set bookmark ID in text/plain - we'll identify it by checking if it exists in the store
     event.dataTransfer.setData('text/plain', props.bookmark.id)
+    // Also set reorder-specific data if we know the group
+    if (props.groupId) {
+      event.dataTransfer.setData('application/x-bookmark-reorder', props.bookmark.id)
+      event.dataTransfer.setData('application/x-bookmark-source-group', props.groupId)
+    }
     // Add visual feedback
     if (event.target instanceof HTMLElement) {
       event.target.style.opacity = '0.5'
     }
   }
+  // Emit drag-start event for parent to track
+  emit('drag-start')
 }
 
 function handleDragEnd(event: DragEvent) {
@@ -68,6 +78,8 @@ function handleDragEnd(event: DragEvent) {
   if (event.target instanceof HTMLElement) {
     event.target.style.opacity = '1'
   }
+  // Emit drag-end event for parent to track
+  emit('drag-end')
 }
 
 function getFaviconUrl(url: string): string {
@@ -92,6 +104,28 @@ function getFaviconUrl(url: string): string {
     tabindex="0"
     @keyup.enter="handleClick"
   >
+    <!-- Drag handle -->
+    <div
+      v-if="groupId"
+      class="cursor-grab active:cursor-grabbing opacity-40 hover:opacity-70 flex-shrink-0"
+      title="Drag to reorder"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        stroke="none"
+      >
+        <circle cx="9" cy="6" r="1.5" />
+        <circle cx="15" cy="6" r="1.5" />
+        <circle cx="9" cy="12" r="1.5" />
+        <circle cx="15" cy="12" r="1.5" />
+        <circle cx="9" cy="18" r="1.5" />
+        <circle cx="15" cy="18" r="1.5" />
+      </svg>
+    </div>
     <div
       class="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-lg transition-transform duration-200"
     >

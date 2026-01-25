@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { Group } from '@/types/group'
 import type { Bookmark } from '@/types/bookmark'
 import { useBookmarkStore } from '@/stores/bookmark/bookmark'
 import { useTabStore } from '@/stores/tab/tab'
+import { useGroupStore } from '@/stores/group/group'
 import BookmarkCard from '@/components/BookmarkCard/BookmarkCard.vue'
 
 interface Props {
@@ -27,11 +28,29 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const bookmarkStore = useBookmarkStore()
+const groupStore = useGroupStore()
 const isExpanded = ref(true)
 const isDragOver = ref(false)
 const isDragging = ref(false)
 
+// Bookmark reordering state
+const bookmarkDragOverIndex = ref<number | null>(null)
+const isDraggingBookmarkReorder = ref(false)
+const draggingBookmarkId = ref<string | null>(null)
+
 const bookmarksCount = computed(() => props.bookmarks.length)
+
+// Track when a bookmark from THIS group starts being dragged
+function handleBookmarkDragStartInGroup(bookmarkId: string) {
+  isDraggingBookmarkReorder.value = true
+  draggingBookmarkId.value = bookmarkId
+}
+
+function handleBookmarkDragEndInGroup() {
+  isDraggingBookmarkReorder.value = false
+  draggingBookmarkId.value = null
+  bookmarkDragOverIndex.value = null
+}
 
 // Expose method to control expansion from parent
 function setExpanded(expanded: boolean) {
@@ -80,6 +99,64 @@ function extractNameFromUrl(urlString: string): string {
 
 function handleModify() {
   emit('modify', props.group)
+}
+
+// Bookmark reorder drop zone handlers
+function handleBookmarkDropZoneDragOver(event: DragEvent, index: number) {
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  bookmarkDragOverIndex.value = index
+}
+
+function handleBookmarkDropZoneDragLeave(event: DragEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  // Only reset if leaving to outside the drop zone
+  const relatedTarget = event.relatedTarget as HTMLElement | null
+  const target = event.target as HTMLElement
+  if (!relatedTarget || !target.parentElement?.contains(relatedTarget)) {
+    bookmarkDragOverIndex.value = null
+  }
+}
+
+async function handleBookmarkReorderDrop(event: DragEvent, targetIndex: number) {
+  event.preventDefault()
+  event.stopPropagation()
+  bookmarkDragOverIndex.value = null
+  
+  // Read bookmark ID from dataTransfer (works during drop event)
+  // Fall back to locally tracked ID
+  let bookmarkId = event.dataTransfer?.getData('application/x-bookmark-reorder')
+  if (!bookmarkId) {
+    bookmarkId = draggingBookmarkId.value
+  }
+
+  if (!bookmarkId) {
+    console.error('No bookmark ID found for reorder')
+    return
+  }
+
+  console.log('Reordering bookmark', bookmarkId, 'to index', targetIndex)
+
+  // Reorder within this group (we only show drop zones for this group's bookmarks)
+  try {
+    await groupStore.reorderBookmarkInGroup(
+      props.group.id,
+      bookmarkId,
+      props.bookmarks,
+      targetIndex,
+    )
+  } catch (err) {
+    console.error('Failed to reorder bookmark:', err)
+  }
+}
+
+// Check if a bookmark is the one being dragged
+function isBookmarkBeingDragged(bookmarkId: string): boolean {
+  return draggingBookmarkId.value === bookmarkId
 }
 
 // Group drag handlers for reordering
@@ -137,11 +214,37 @@ async function handleDrop(event: DragEvent) {
 
   if (!event.dataTransfer) return
 
+  // Check if this is a group drag - ignore it (handled by HomeView)
+  if (event.dataTransfer.types.includes('application/x-group-id')) {
+    return
+  }
+
+  // Check if this is a bookmark reorder drag - ignore it (handled by bookmark drop zones)
+  if (event.dataTransfer.types.includes('application/x-bookmark-reorder')) {
+    // If it's a reorder drag from THIS group, ignore (drop zones handle it)
+    const sourceGroupId = event.dataTransfer.getData('application/x-bookmark-source-group')
+    if (sourceGroupId === props.group.id) {
+      console.log('Parent handleDrop: ignoring bookmark reorder (should be handled by drop zones)')
+      return
+    }
+    // If it's from another group, treat as a move operation
+    const bookmarkId = event.dataTransfer.getData('application/x-bookmark-reorder')
+    if (bookmarkId) {
+      emit('bookmark-drop', props.group.id, bookmarkId)
+      return
+    }
+  }
+
   // Get all possible data types
   const textPlain = event.dataTransfer.getData('text/plain')
   const uriList = event.dataTransfer.getData('text/uri-list')
   const urlData = event.dataTransfer.getData('URL')
   const htmlData = event.dataTransfer.getData('text/html')
+
+  // Check if text/plain is a group drag (prefixed with "group:")
+  if (textPlain && textPlain.startsWith('group:')) {
+    return // Ignore group drags
+  }
 
   // First, check if text/plain is a bookmark ID (existing bookmark being moved)
   if (textPlain) {
@@ -395,14 +498,42 @@ async function handleDrop(event: DragEvent) {
       </div>
       <div
         v-else
-        class="flex flex-wrap gap-4"
+        class="flex flex-wrap gap-1"
       >
-        <BookmarkCard
-          v-for="bookmark in bookmarks"
-          :key="bookmark.id"
-          :bookmark="bookmark"
-          @modify="$emit('bookmark-modify', bookmark)"
-          @delete="$emit('bookmark-delete', $event)"
+        <template v-for="(bookmark, index) in bookmarks" :key="bookmark.id">
+          <!-- Drop zone before each bookmark -->
+          <div
+            v-if="isDraggingBookmarkReorder"
+            data-bookmark-drop-zone
+            class="w-6 min-h-12 self-stretch rounded transition-all duration-150"
+            :class="[
+              bookmarkDragOverIndex === index ? 'bg-blue-500' : 'bg-blue-200/30 hover:bg-blue-300/50'
+            ]"
+            @dragover="handleBookmarkDropZoneDragOver($event, index)"
+            @dragleave="handleBookmarkDropZoneDragLeave"
+            @drop="handleBookmarkReorderDrop($event, index)"
+          />
+          <BookmarkCard
+            :bookmark="bookmark"
+            :group-id="group.id"
+            :class="{ 'opacity-50': isBookmarkBeingDragged(bookmark.id) }"
+            @modify="$emit('bookmark-modify', bookmark)"
+            @delete="$emit('bookmark-delete', $event)"
+            @drag-start="handleBookmarkDragStartInGroup(bookmark.id)"
+            @drag-end="handleBookmarkDragEndInGroup"
+          />
+        </template>
+        <!-- Drop zone after the last bookmark -->
+        <div
+          v-if="isDraggingBookmarkReorder"
+          data-bookmark-drop-zone
+          class="w-6 min-h-12 self-stretch rounded transition-all duration-150"
+          :class="[
+            bookmarkDragOverIndex === bookmarks.length ? 'bg-blue-500' : 'bg-blue-200/30 hover:bg-blue-300/50'
+          ]"
+          @dragover="handleBookmarkDropZoneDragOver($event, bookmarks.length)"
+          @dragleave="handleBookmarkDropZoneDragLeave"
+          @drop="handleBookmarkReorderDrop($event, bookmarks.length)"
         />
       </div>
     </div>

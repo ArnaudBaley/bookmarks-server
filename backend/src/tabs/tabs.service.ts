@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Tab } from '../entities/tab.entity';
 import { Group } from '../entities/group.entity';
 import { Bookmark } from '../entities/bookmark.entity';
+import { BookmarkGroup } from '../entities/bookmark-group.entity';
 import { CreateTabDto } from './dto/create-tab.dto';
 import { UpdateTabDto } from './dto/update-tab.dto';
 
@@ -21,6 +22,8 @@ export class TabsService {
     private groupRepository: Repository<Group>,
     @InjectRepository(Bookmark)
     private bookmarkRepository: Repository<Bookmark>,
+    @InjectRepository(BookmarkGroup)
+    private bookmarkGroupRepository: Repository<BookmarkGroup>,
   ) {}
 
   async findAll(): Promise<Tab[]> {
@@ -141,14 +144,15 @@ export class TabsService {
     // Find all bookmarks associated with this tab
     const bookmarks = await this.bookmarkRepository.find({
       where: { tabId: id },
-      relations: ['groups'],
     });
 
-    // Remove bookmarks from groups (clean up ManyToMany relationships)
-    for (const group of groups) {
-      if (group.bookmarks && group.bookmarks.length > 0) {
-        group.bookmarks = [];
-        await this.groupRepository.save(group);
+    // Get all group IDs for this tab
+    const groupIds = groups.map((g) => g.id);
+
+    // Remove bookmark-group relationships for these groups
+    if (groupIds.length > 0) {
+      for (const groupId of groupIds) {
+        await this.bookmarkGroupRepository.delete({ groupId });
       }
     }
 
@@ -167,31 +171,14 @@ export class TabsService {
   }
 
   async removeAll(): Promise<void> {
-    // Find all groups and bookmarks to clean up relationships
-    const groups = await this.groupRepository.find({
-      relations: ['bookmarks'],
-    });
-    const bookmarks = await this.bookmarkRepository.find({
-      relations: ['groups'],
-    });
-
-    // Remove bookmarks from groups (clean up ManyToMany relationships)
-    for (const group of groups) {
-      if (group.bookmarks && group.bookmarks.length > 0) {
-        group.bookmarks = [];
-        await this.groupRepository.save(group);
-      }
-    }
+    // Remove all bookmark-group relationships first
+    await this.bookmarkGroupRepository.clear();
 
     // Delete all groups
-    if (groups.length > 0) {
-      await this.groupRepository.clear();
-    }
+    await this.groupRepository.clear();
 
     // Delete all bookmarks
-    if (bookmarks.length > 0) {
-      await this.bookmarkRepository.clear();
-    }
+    await this.bookmarkRepository.clear();
 
     // Finally, delete all tabs
     await this.tabRepository.clear();

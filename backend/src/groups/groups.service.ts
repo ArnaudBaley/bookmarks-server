@@ -4,6 +4,7 @@ import { Between, IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Group } from '../entities/group.entity';
 import { Bookmark } from '../entities/bookmark.entity';
+import { BookmarkGroup } from '../entities/bookmark-group.entity';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 
@@ -14,13 +15,15 @@ export class GroupsService {
     private groupRepository: Repository<Group>,
     @InjectRepository(Bookmark)
     private bookmarkRepository: Repository<Bookmark>,
+    @InjectRepository(BookmarkGroup)
+    private bookmarkGroupRepository: Repository<BookmarkGroup>,
   ) {}
 
   async findAll(tabId?: string): Promise<Group[]> {
     const where = tabId ? { tabId } : {};
     return this.groupRepository.find({
       where,
-      relations: ['bookmarks'],
+      relations: ['bookmarkGroups', 'bookmarkGroups.bookmark'],
       order: { orderIndex: 'ASC' },
     });
   }
@@ -28,7 +31,7 @@ export class GroupsService {
   async findOne(id: string): Promise<Group> {
     const group = await this.groupRepository.findOne({
       where: { id },
-      relations: ['bookmarks'],
+      relations: ['bookmarkGroups', 'bookmarkGroups.bookmark'],
     });
     if (!group) {
       throw new NotFoundException(`Group with ID ${id} not found`);
@@ -111,59 +114,124 @@ export class GroupsService {
   }
 
   async addBookmarkToGroup(groupId: string, bookmarkId: string): Promise<void> {
-    const group = await this.findOne(groupId);
+    // Check if group exists
+    const group = await this.groupRepository.findOne({
+      where: { id: groupId },
+    });
+    if (!group) {
+      throw new NotFoundException(`Group with ID ${groupId} not found`);
+    }
+
+    // Check if bookmark exists
     const bookmark = await this.bookmarkRepository.findOne({
       where: { id: bookmarkId },
-      relations: ['groups'],
     });
-
     if (!bookmark) {
       throw new NotFoundException(`Bookmark with ID ${bookmarkId} not found`);
     }
 
-    if (!group.bookmarks) {
-      group.bookmarks = [];
+    // Check if relationship already exists
+    const existing = await this.bookmarkGroupRepository.findOne({
+      where: { bookmarkId, groupId },
+    });
+    if (existing) {
+      return; // Already in group
     }
 
-    const bookmarkAlreadyInGroup = group.bookmarks.some(
-      (b) => b.id === bookmarkId,
-    );
-    if (!bookmarkAlreadyInGroup) {
-      group.bookmarks.push(bookmark);
-      await this.groupRepository.save(group);
-    }
+    // Calculate the next orderIndex for this group
+    const maxOrderResult = await this.bookmarkGroupRepository
+      .createQueryBuilder('bg')
+      .where('bg.group_id = :groupId', { groupId })
+      .select('MAX(bg.orderIndex)', 'max')
+      .getRawOne();
+    const orderIndex = (maxOrderResult?.max ?? -1) + 1;
+
+    // Create the relationship
+    const bookmarkGroup = this.bookmarkGroupRepository.create({
+      bookmarkId,
+      groupId,
+      orderIndex,
+    });
+    await this.bookmarkGroupRepository.save(bookmarkGroup);
   }
 
   async removeBookmarkFromGroup(
     groupId: string,
     bookmarkId: string,
   ): Promise<void> {
-    const group = await this.findOne(groupId);
-    const bookmark = await this.bookmarkRepository.findOne({
-      where: { id: bookmarkId },
+    const bookmarkGroup = await this.bookmarkGroupRepository.findOne({
+      where: { bookmarkId, groupId },
     });
 
-    if (!bookmark) {
-      throw new NotFoundException(`Bookmark with ID ${bookmarkId} not found`);
+    if (!bookmarkGroup) {
+      throw new NotFoundException(
+        `Bookmark ${bookmarkId} is not in group ${groupId}`,
+      );
     }
 
-    if (group.bookmarks) {
-      group.bookmarks = group.bookmarks.filter((b) => b.id !== bookmarkId);
-      await this.groupRepository.save(group);
+    await this.bookmarkGroupRepository.remove(bookmarkGroup);
+  }
+
+  async reorderBookmarkInGroup(
+    groupId: string,
+    bookmarkId: string,
+    newOrderIndex: number,
+  ): Promise<void> {
+    const bookmarkGroup = await this.bookmarkGroupRepository.findOne({
+      where: { bookmarkId, groupId },
+    });
+
+    if (!bookmarkGroup) {
+      throw new NotFoundException(
+        `Bookmark ${bookmarkId} is not in group ${groupId}`,
+      );
     }
+
+    const oldOrderIndex = bookmarkGroup.orderIndex;
+
+    if (newOrderIndex === oldOrderIndex) {
+      return;
+    }
+
+    // Shift other bookmarks within the same group
+    if (newOrderIndex < oldOrderIndex) {
+      // Moving up: shift bookmarks in [newOrderIndex, oldOrderIndex - 1] down by 1
+      await this.bookmarkGroupRepository.increment(
+        {
+          groupId,
+          orderIndex: Between(newOrderIndex, oldOrderIndex - 1),
+        },
+        'orderIndex',
+        1,
+      );
+    } else {
+      // Moving down: shift bookmarks in [oldOrderIndex + 1, newOrderIndex] up by 1
+      await this.bookmarkGroupRepository.decrement(
+        {
+          groupId,
+          orderIndex: Between(oldOrderIndex + 1, newOrderIndex),
+        },
+        'orderIndex',
+        1,
+      );
+    }
+
+    bookmarkGroup.orderIndex = newOrderIndex;
+    await this.bookmarkGroupRepository.save(bookmarkGroup);
+  }
+
+  async getBookmarksInGroup(groupId: string): Promise<Bookmark[]> {
+    const bookmarkGroups = await this.bookmarkGroupRepository.find({
+      where: { groupId },
+      relations: ['bookmark'],
+      order: { orderIndex: 'ASC' },
+    });
+    return bookmarkGroups.map((bg) => bg.bookmark).filter((b) => b !== null);
   }
 
   async removeAll(): Promise<void> {
-    // First, remove all bookmarks from groups (clean up ManyToMany relationships)
-    const groups = await this.groupRepository.find({
-      relations: ['bookmarks'],
-    });
-    for (const group of groups) {
-      if (group.bookmarks && group.bookmarks.length > 0) {
-        group.bookmarks = [];
-        await this.groupRepository.save(group);
-      }
-    }
+    // First, remove all bookmark-group relationships
+    await this.bookmarkGroupRepository.clear();
     // Then delete all groups
     await this.groupRepository.clear();
   }
