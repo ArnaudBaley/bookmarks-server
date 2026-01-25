@@ -8,7 +8,7 @@ The backend is a NestJS application that provides a RESTful API for managing boo
 
 - **Framework**: NestJS 11
 - **Language**: TypeScript
-- **ORM**: TypeORM 0.3
+- **ORM**: TypeORM 0.3.20
 - **Database**: SQLite 3
 - **Validation**: class-validator, class-transformer
 - **UUID**: uuid v10
@@ -50,9 +50,7 @@ backend/
 │   ├── app.controller.ts    # Root controller
 │   ├── app.service.ts       # Root service
 │   └── main.ts              # Application entry point
-├── test/                    # E2E tests
-├── deploy/                  # Deployment configurations
-└── requests.http            # API testing file
+└── test/                    # E2E tests
 ```
 
 ## Modules
@@ -307,6 +305,11 @@ backend/
 
 ## Development
 
+### Building the Application
+```bash
+npm run build          # Build for production
+```
+
 ### Running the Application
 ```bash
 npm run start          # Start application
@@ -320,12 +323,13 @@ npm run start:prod     # Start production build
 npm run test           # Run unit tests
 npm run test:watch     # Watch mode
 npm run test:cov       # With coverage
+npm run test:debug     # Debug mode
 npm run test:e2e       # Run E2E tests
 ```
 
 ### Code Quality
 ```bash
-npm run lint           # Run ESLint
+npm run lint           # Run ESLint (with auto-fix)
 npm run format         # Format with Prettier
 ```
 
@@ -338,9 +342,14 @@ npm run format         # Format with Prettier
 ## API Testing
 
 ### HTTP Requests File
-- **Location**: `backend/requests.http`
+- **Location**: `documentation/requests.http`
 - **Purpose**: Pre-configured HTTP requests for testing API endpoints
 - **Usage**: Use with REST Client extension in VS Code or similar tools
+
+The `requests.http` file contains example requests for all API endpoints, including:
+- CRUD operations for bookmarks, groups, and tabs
+- Relationship management (adding/removing bookmarks from groups)
+- Example workflows demonstrating multi-step operations
 
 ## Key Features
 

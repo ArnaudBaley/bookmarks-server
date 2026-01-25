@@ -36,23 +36,25 @@ cd bookmarks-server
 
 **Development Environment**:
 ```bash
-cd backend/deploy
+cd deploy
 ./deploy-dev.sh
 ```
 
 Or manually:
 ```bash
+cd deploy
 docker-compose -f docker-compose.yml up
 ```
 
 **Production Environment**:
 ```bash
-cd backend/deploy
+cd deploy
 ./deploy-prod.sh
 ```
 
 Or manually:
 ```bash
+cd deploy
 docker-compose -f docker-compose.prod.yml up
 ```
 
@@ -206,8 +208,14 @@ The application uses SQLite, which requires no additional setup. The database fi
 
 ### Database Location
 
-- **Development**: `backend/bookmarks.db` (or path specified in `DATABASE_PATH`)
-- **Docker**: `backend/deploy/data/bookmarks.db`
+- **Development (Manual)**: `backend/bookmarks.db` (or path specified in `DATABASE_PATH`)
+- **Docker**: `deploy/data/bookmarks.db` (persisted via Docker volume)
+
+### Docker Volume Persistence
+
+When using Docker, the database is stored in a volume mounted at `deploy/data/`. This ensures data persists across container restarts. The directory is automatically created on first run.
+
+**Important**: The `deploy/data/` directory should be backed up regularly as it contains all your bookmark data.
 
 ### Database Initialization
 
@@ -218,6 +226,16 @@ The database schema is automatically created by TypeORM on first run (when `sync
 ## Testing the Setup
 
 ### 1. Test Backend API
+
+**Option 1: Using the HTTP Requests File**
+
+The project includes a pre-configured `requests.http` file in the `documentation/` folder. You can use it with:
+- REST Client extension in VS Code
+- Any HTTP client that supports `.http` files
+
+Simply open `documentation/requests.http` and click the "Send Request" button above each request.
+
+**Option 2: Using cURL**
 
 ```bash
 # Get all tabs
@@ -317,7 +335,7 @@ PORT=3001 npm run start:dev
 **Solution**:
 ```bash
 # Create data directory
-mkdir -p backend/deploy/data
+mkdir -p deploy/data
 
 # Or set DATABASE_PATH to an existing directory
 export DATABASE_PATH=/path/to/database.db
@@ -401,11 +419,12 @@ If you encounter issues:
 
 For production deployment, see the deployment scripts:
 
-- **Backend**: `backend/deploy/deploy-prod.sh`
-- **Frontend**: `frontend/deploy/deploy-prod.sh`
+- **Development**: `deploy/deploy-dev.sh`
+- **Production**: `deploy/deploy-prod.sh`
 
-Or use the root Docker Compose:
+Or use Docker Compose directly:
 ```bash
+cd deploy
 docker-compose -f docker-compose.prod.yml up -d
 ```
 

@@ -209,7 +209,7 @@ This document describes all user-facing features and use cases of the bookmarks 
 1. Click the collapse/expand button on a group header
 2. Group toggles between collapsed and expanded states
 
-**Planned Feature**: Global collapse/expand all groups including ungrouped section.
+**Planned Feature**: Global collapse/expand all groups including ungrouped section (not yet implemented).
 
 ### 4. Drag and Drop
 
@@ -487,13 +487,16 @@ This document describes all user-facing features and use cases of the bookmarks 
 
 ## Planned Features
 
-Based on `frontend/TODO.md`, the following features are planned:
+Based on `TODO.md`, the following features are planned:
 
-1. **Enhanced Bookmark Editing**: Edit bookmark with tab and group selection UI showing nested structure
-2. **Group/Tab Management**: Copy or move groups between tabs
-3. **Keyboard Shortcuts**: `Ctrl+Shift` to switch tabs
-4. **Manual Sorting**: User-defined sort order for sections
-5. **Global Collapse/Expand**: Fold/unfold all groups including ungrouped section
+1. **Manual Sorting**: User-defined sort order for bookmarks within groups (by drag and drop)
+2. **Manual Section Sorting**: User-defined sort order for sections/groups (by drag and drop)
+3. **Keyboard Shortcuts**: `Ctrl+Shift` to switch to next tab
+4. **Global Collapse/Expand**: Fold/unfold all groups including ungrouped section
+
+### Recently Implemented
+
+- **Enhanced Bookmark Editing**: Edit bookmark with tab and group selection UI showing nested structure (✅ Implemented)
 
 ## Error Scenarios
 

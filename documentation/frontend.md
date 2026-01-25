@@ -6,12 +6,12 @@ The frontend is a Vue 3 application built with TypeScript, providing a modern, r
 
 ## Tech Stack
 
-- **Framework**: Vue 3 (Composition API)
+- **Framework**: Vue 3.5.26 (Composition API)
 - **Language**: TypeScript
-- **State Management**: Pinia
-- **Routing**: Vue Router 4
-- **Styling**: Tailwind CSS 4
-- **Build Tool**: Vite 7
+- **State Management**: Pinia 3.0.4
+- **Routing**: Vue Router 4.6.4
+- **Styling**: Tailwind CSS 4.1.18
+- **Build Tool**: Vite 7.3.0
 - **Testing**: 
   - Vitest (unit tests)
   - Playwright (E2E tests)
@@ -353,10 +353,16 @@ The application supports drag-and-drop functionality for creating bookmarks:
 
 ## Development
 
+### Building the Application
+```bash
+npm run build        # Build for production (includes type-check)
+npm run build-only   # Build without type-check
+npm run clean        # Remove dist directory
+```
+
 ### Running the Application
 ```bash
 npm run dev          # Start development server (port 5173)
-npm run build        # Build for production
 npm run preview      # Preview production build
 ```
 
@@ -365,15 +371,23 @@ npm run preview      # Preview production build
 npm run test:unit              # Run unit tests
 npm run test:unit:watch        # Watch mode
 npm run test:unit:coverage     # With coverage
-npm run test:e2e               # Run E2E tests
+npm run test:e2e               # Run E2E tests (all browsers)
+npm run test:e2e:chrome        # Run E2E tests (Chromium only)
+npm run test:e2e:headed        # Run E2E tests with browser UI
+npm run test:e2e:headed:chrome # Run E2E tests (Chromium, headed)
+npm run test:e2e:take-snapshots # Update Playwright snapshots
+npm run test:e2e:check-snapshots # Check Playwright snapshots
 npm run storybook              # Start Storybook
+npm run build-storybook        # Build Storybook for production
 ```
 
 ### Code Quality
 ```bash
-npm run lint        # Run ESLint
-npm run format      # Format with Prettier
-npm run type-check  # TypeScript type checking
+npm run lint           # Run ESLint (with auto-fix)
+npm run lint:check     # Run ESLint (check only)
+npm run lint:watch     # Watch mode for linting
+npm run format         # Format with Prettier
+npm run type-check     # TypeScript type checking
 ```
 
 ## Key Features

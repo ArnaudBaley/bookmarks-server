@@ -545,11 +545,13 @@ GET /bookmarks?tabId=tab-uuid-from-step-1
 
 The project includes a `requests.http` file for testing API endpoints:
 
-**Location**: `backend/requests.http`
+**Location**: `documentation/requests.http`
 
 **Usage**: 
 - Use with REST Client extension in VS Code
 - Or use with any HTTP client that supports `.http` files
+
+This file contains pre-configured requests for all API endpoints, including examples for creating bookmarks, groups, tabs, and managing relationships between them.
 
 ### Example cURL Commands
 

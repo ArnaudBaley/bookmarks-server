@@ -5,6 +5,9 @@
 ### Get all bookmarks
 GET {{baseUrl}}/bookmarks
 
+### Get all bookmarks filtered by tab
+GET {{baseUrl}}/bookmarks?tabId={{tabId}}
+
 ### Create a new bookmark
 POST {{baseUrl}}/bookmarks
 Content-Type: application/json
@@ -15,13 +18,15 @@ Content-Type: application/json
   "groupIds": []
 }
 
-### Create a bookmark with groups
+### Create a bookmark with groups and tabs
 POST {{baseUrl}}/bookmarks
 Content-Type: application/json
 
 {
   "name": "NestJS Documentation",
   "url": "https://docs.nestjs.com",
+  "tabId": "{{tabId}}",
+  "tabIds": ["{{tabId}}"],
   "groupIds": ["group-id-1", "group-id-2"]
 }
 
@@ -32,16 +37,24 @@ Content-Type: application/json
 {
   "name": "Updated Bookmark Name",
   "url": "https://updated-url.com",
+  "tabId": "{{tabId}}",
+  "tabIds": ["{{tabId}}"],
   "groupIds": ["group-id-1"]
 }
 
 ### Delete a bookmark
 DELETE {{baseUrl}}/bookmarks/{{bookmarkId}}
 
+### Delete all bookmarks
+DELETE {{baseUrl}}/bookmarks/all
+
 ### Groups API
 
 ### Get all groups
 GET {{baseUrl}}/groups
+
+### Get all groups filtered by tab
+GET {{baseUrl}}/groups?tabId={{tabId}}
 
 ### Create a new group
 POST {{baseUrl}}/groups
@@ -52,13 +65,14 @@ Content-Type: application/json
   "color": "#3b82f6"
 }
 
-### Create another group
+### Create a group with tab
 POST {{baseUrl}}/groups
 Content-Type: application/json
 
 {
   "name": "Design",
-  "color": "#ef4444"
+  "color": "#ef4444",
+  "tabId": "{{tabId}}"
 }
 
 ### Update a group
@@ -67,11 +81,15 @@ Content-Type: application/json
 
 {
   "name": "Updated Group Name",
-  "color": "#10b981"
+  "color": "#10b981",
+  "tabId": "{{tabId}}"
 }
 
 ### Delete a group
 DELETE {{baseUrl}}/groups/{{groupId}}
+
+### Delete all groups
+DELETE {{baseUrl}}/groups/all
 
 ### Group-Bookmark Relationships
 
@@ -106,3 +124,43 @@ Content-Type: application/json
 ### Step 3: Or add bookmark to group separately
 POST {{baseUrl}}/groups/{{groupId}}/bookmarks/{{bookmarkId}}
 
+### Tabs API
+
+### Get all tabs
+GET {{baseUrl}}/tabs
+
+### Get a single tab
+GET {{baseUrl}}/tabs/{{tabId}}
+
+### Create a new tab
+POST {{baseUrl}}/tabs
+Content-Type: application/json
+
+{
+  "name": "Work",
+  "color": "#8b5cf6"
+}
+
+### Create another tab
+POST {{baseUrl}}/tabs
+Content-Type: application/json
+
+{
+  "name": "Personal",
+  "color": "#ef4444"
+}
+
+### Update a tab
+PUT {{baseUrl}}/tabs/{{tabId}}
+Content-Type: application/json
+
+{
+  "name": "Updated Tab Name",
+  "color": "#10b981"
+}
+
+### Delete a tab (cascades to groups and bookmarks)
+DELETE {{baseUrl}}/tabs/{{tabId}}
+
+### Delete all tabs (cascades to all groups and bookmarks)
+DELETE {{baseUrl}}/tabs/all
