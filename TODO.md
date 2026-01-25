@@ -16,10 +16,7 @@
 
 # Features
 
-- 
-
-- User must be able to sort manually bookmarks in a group (by drag and drop)
-- User must be able to sort manually sections (by drag and drop)
+- I want you to store the favicon instead of download them every time. In the settings menu, a button will be available to update all favicons. When user delete his data, it will also delete favicons.
 
 
 # Dev tool

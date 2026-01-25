@@ -16,6 +16,7 @@ describe('BookmarksController', () => {
     update: jest.fn(),
     remove: jest.fn(),
     removeAll: jest.fn(),
+    refreshAllFavicons: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -42,9 +43,10 @@ describe('BookmarksController', () => {
           id: '1',
           name: 'Bookmark 1',
           url: 'https://example.com',
+          favicon: 'data:image/png;base64,abc123',
           tabId: 'tab-1',
           tabs: [{ id: 'tab-1' }, { id: 'tab-2' }],
-          groups: [{ id: 'group-1' }],
+          bookmarkGroups: [{ groupId: 'group-1', orderIndex: 0 }],
           createdAt: new Date('2024-01-01'),
           updatedAt: new Date('2024-01-01'),
         },
@@ -58,9 +60,11 @@ describe('BookmarksController', () => {
           id: '1',
           name: 'Bookmark 1',
           url: 'https://example.com',
+          favicon: 'data:image/png;base64,abc123',
           tabId: 'tab-1',
           tabIds: ['tab-1', 'tab-2'],
           groupIds: ['group-1'],
+          groupOrderIndexes: { 'group-1': 0 },
           createdAt: mockBookmarks[0].createdAt.toISOString(),
           updatedAt: mockBookmarks[0].updatedAt.toISOString(),
         },
@@ -74,9 +78,10 @@ describe('BookmarksController', () => {
           id: '1',
           name: 'Bookmark 1',
           url: 'https://example.com',
+          favicon: null,
           tabId: 'tab-1',
           tabs: [{ id: 'tab-1' }],
-          groups: [],
+          bookmarkGroups: [],
           createdAt: new Date('2024-01-01'),
           updatedAt: new Date('2024-01-01'),
         },
@@ -90,9 +95,11 @@ describe('BookmarksController', () => {
           id: '1',
           name: 'Bookmark 1',
           url: 'https://example.com',
+          favicon: null,
           tabId: 'tab-1',
           tabIds: ['tab-1'],
           groupIds: [],
+          groupOrderIndexes: {},
           createdAt: mockBookmarks[0].createdAt.toISOString(),
           updatedAt: mockBookmarks[0].updatedAt.toISOString(),
         },
@@ -111,8 +118,9 @@ describe('BookmarksController', () => {
       const mockBookmark = {
         id: 'new-id',
         ...createDto,
+        favicon: 'data:image/png;base64,abc123',
         tabs: [{ id: 'tab-1' }],
-        groups: [],
+        bookmarkGroups: [],
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-01'),
       };
@@ -124,9 +132,11 @@ describe('BookmarksController', () => {
         id: 'new-id',
         name: 'New Bookmark',
         url: 'https://example.com',
+        favicon: 'data:image/png;base64,abc123',
         tabId: 'tab-1',
         tabIds: ['tab-1'],
         groupIds: [],
+        groupOrderIndexes: {},
         createdAt: mockBookmark.createdAt.toISOString(),
         updatedAt: mockBookmark.updatedAt.toISOString(),
       });
@@ -144,9 +154,13 @@ describe('BookmarksController', () => {
         id: 'new-id',
         name: 'New Bookmark',
         url: 'https://example.com',
+        favicon: null,
         tabId: 'tab-1',
         tabs: [{ id: 'tab-1' }, { id: 'tab-2' }],
-        groups: [{ id: 'group-1' }, { id: 'group-2' }],
+        bookmarkGroups: [
+          { groupId: 'group-1', orderIndex: 0 },
+          { groupId: 'group-2', orderIndex: 1 },
+        ],
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-01'),
       };
@@ -168,9 +182,10 @@ describe('BookmarksController', () => {
         id: '1',
         name: 'Updated Bookmark',
         url: 'https://example.com',
+        favicon: 'data:image/png;base64,abc123',
         tabId: 'tab-1',
         tabs: [{ id: 'tab-1' }],
-        groups: [],
+        bookmarkGroups: [],
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-02'),
       };
@@ -182,9 +197,11 @@ describe('BookmarksController', () => {
         id: '1',
         name: 'Updated Bookmark',
         url: 'https://example.com',
+        favicon: 'data:image/png;base64,abc123',
         tabId: 'tab-1',
         tabIds: ['tab-1'],
         groupIds: [],
+        groupOrderIndexes: {},
         createdAt: mockBookmark.createdAt.toISOString(),
         updatedAt: mockBookmark.updatedAt.toISOString(),
       });
@@ -199,9 +216,10 @@ describe('BookmarksController', () => {
         id: '1',
         name: 'Updated Bookmark',
         url: 'https://example.com',
+        favicon: null,
         tabId: null,
         tabs: null,
-        groups: null,
+        bookmarkGroups: null,
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-02'),
       };
@@ -239,6 +257,18 @@ describe('BookmarksController', () => {
       await controller.removeAll();
 
       expect(service.removeAll).toHaveBeenCalled();
+    });
+  });
+
+  describe('refreshFavicons', () => {
+    it('should refresh all favicons', async () => {
+      const expectedResult = { updated: 5, failed: 1 };
+      mockBookmarksService.refreshAllFavicons.mockResolvedValue(expectedResult);
+
+      const result = await controller.refreshFavicons();
+
+      expect(result).toEqual(expectedResult);
+      expect(service.refreshAllFavicons).toHaveBeenCalled();
     });
   });
 });

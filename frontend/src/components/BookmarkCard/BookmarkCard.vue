@@ -88,7 +88,12 @@ function handleDragEnd(event: DragEvent) {
   emit('drag-end')
 }
 
-function getFaviconUrl(url: string): string {
+function getFaviconUrl(url: string, storedFavicon?: string | null): string {
+  // Use stored favicon if available
+  if (storedFavicon) {
+    return storedFavicon
+  }
+  // Fallback to Google favicon service for legacy bookmarks or when stored favicon is not available
   try {
     const urlObj = new URL(url)
     return `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`
@@ -135,7 +140,7 @@ function getFaviconUrl(url: string): string {
     <div
       class="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-lg transition-transform duration-200"
     >
-      <img :src="getFaviconUrl(bookmark.url)" :alt="`${bookmark.name} icon`" class="w-full h-full object-contain" />
+      <img :src="getFaviconUrl(bookmark.url, bookmark.favicon)" :alt="`${bookmark.name} icon`" class="w-full h-full object-contain" />
     </div>
     <div class="flex-shrink-0">
       <h3 class="m-0 text-base font-medium whitespace-nowrap text-[var(--color-text)]">

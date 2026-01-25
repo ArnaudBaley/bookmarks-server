@@ -106,6 +106,22 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     }
   }
 
+  async function refreshAllFavicons() {
+    loading.value = true
+    error.value = null
+    try {
+      const result = await bookmarkApi.refreshAllFavicons()
+      // Refetch bookmarks to get updated favicons
+      await fetchBookmarks()
+      return result
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to refresh favicons'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     bookmarks,
     filteredBookmarks,
@@ -119,6 +135,7 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     updateBookmark,
     removeBookmark,
     deleteAllBookmarks,
+    refreshAllFavicons,
   }
 })
 

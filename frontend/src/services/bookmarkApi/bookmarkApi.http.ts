@@ -1,4 +1,4 @@
-import type { IBookmarkApi } from './bookmarkApi.interface'
+import type { IBookmarkApi, RefreshFaviconsResponse } from './bookmarkApi.interface'
 import type { Bookmark, CreateBookmarkDto, UpdateBookmarkDto } from '@/types/bookmark'
 
 /**
@@ -87,6 +87,21 @@ export class HttpBookmarkApi implements IBookmarkApi {
       }
     } catch (error) {
       console.error('[HttpBookmarkApi] Error deleting all bookmarks:', error)
+      throw error
+    }
+  }
+
+  async refreshAllFavicons(): Promise<RefreshFaviconsResponse> {
+    try {
+      const response = await fetch(`${this.baseUrl}/bookmarks/refresh-favicons`, {
+        method: 'POST',
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to refresh favicons: ${response.statusText}`)
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('[HttpBookmarkApi] Error refreshing favicons:', error)
       throw error
     }
   }

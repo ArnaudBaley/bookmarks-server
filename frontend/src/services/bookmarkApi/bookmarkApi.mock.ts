@@ -1,4 +1,4 @@
-import type { IBookmarkApi } from './bookmarkApi.interface'
+import type { IBookmarkApi, RefreshFaviconsResponse } from './bookmarkApi.interface'
 import type { Bookmark, CreateBookmarkDto, UpdateBookmarkDto } from '@/types/bookmark'
 
 const STORAGE_KEY = 'bookmarks-mock-data'
@@ -120,6 +120,14 @@ export class MockBookmarkApi implements IBookmarkApi {
     console.log('[MockBookmarkApi] Deleting all bookmarks')
     await this.simulateDelay()
     this.setStorage([])
+  }
+
+  async refreshAllFavicons(): Promise<RefreshFaviconsResponse> {
+    console.log('[MockBookmarkApi] Refreshing all favicons')
+    await this.simulateDelay(500)
+    // In mock mode, we simulate updating all bookmarks
+    const bookmarks = this.getStorage()
+    return { updated: bookmarks.length, failed: 0 }
   }
 
   /**

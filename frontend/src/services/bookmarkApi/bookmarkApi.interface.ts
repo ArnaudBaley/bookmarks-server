@@ -1,6 +1,14 @@
 import type { Bookmark, CreateBookmarkDto, UpdateBookmarkDto } from '@/types/bookmark'
 
 /**
+ * Response type for refreshAllFavicons operation
+ */
+export interface RefreshFaviconsResponse {
+  updated: number
+  failed: number
+}
+
+/**
  * Interface for bookmark API communication
  * This interface defines the contract for all bookmark API implementations
  */
@@ -39,5 +47,11 @@ export interface IBookmarkApi {
    * @returns Promise that resolves when all bookmarks are deleted
    */
   deleteAllBookmarks(): Promise<void>
+
+  /**
+   * Refresh all favicons for all bookmarks
+   * @returns Promise resolving to the number of updated and failed favicons
+   */
+  refreshAllFavicons(): Promise<RefreshFaviconsResponse>
 }
 

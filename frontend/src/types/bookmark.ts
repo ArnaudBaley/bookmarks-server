@@ -2,6 +2,7 @@ export interface Bookmark {
   id: string
   name: string
   url: string
+  favicon?: string | null // base64 encoded favicon
   tabId?: string // Keep for backward compatibility, but prefer tabIds
   tabIds?: string[]
   groupIds?: string[]

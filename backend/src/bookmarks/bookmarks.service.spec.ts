@@ -3,14 +3,17 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { In } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { BookmarksService } from './bookmarks.service';
+import { FaviconService } from './favicon.service';
 import { Bookmark } from '../entities/bookmark.entity';
 import { Group } from '../entities/group.entity';
 import { Tab } from '../entities/tab.entity';
+import { BookmarkGroup } from '../entities/bookmark-group.entity';
 import { CreateBookmarkDto } from './dto/create-bookmark.dto';
 import { UpdateBookmarkDto } from './dto/update-bookmark.dto';
 
 describe('BookmarksService', () => {
   let service: BookmarksService;
+  let faviconService: FaviconService;
 
   const mockBookmarkRepository = {
     find: jest.fn(),
@@ -31,19 +34,51 @@ describe('BookmarksService', () => {
     findOne: jest.fn(),
   };
 
+  const mockBookmarkGroupRepository = {
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    createQueryBuilder: jest.fn(),
+  };
+
+  const mockFaviconService = {
+    fetchFavicon: jest.fn(),
+  };
+
   let mockQueryBuilder: {
+    distinct: jest.Mock;
     leftJoinAndSelect: jest.Mock;
     where: jest.Mock;
     getMany: jest.Mock;
+    select: jest.Mock;
+    getRawOne: jest.Mock;
+  };
+
+  let mockBookmarkGroupQueryBuilder: {
+    where: jest.Mock;
+    select: jest.Mock;
+    getRawOne: jest.Mock;
   };
 
   beforeEach(async () => {
     mockQueryBuilder = {
+      distinct: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       getMany: jest.fn(),
+      select: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn(),
     };
     mockBookmarkRepository.createQueryBuilder = jest.fn(() => mockQueryBuilder);
+
+    mockBookmarkGroupQueryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({ max: 0 }),
+    };
+    mockBookmarkGroupRepository.createQueryBuilder = jest.fn(
+      () => mockBookmarkGroupQueryBuilder,
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -60,10 +95,19 @@ describe('BookmarksService', () => {
           provide: getRepositoryToken(Tab),
           useValue: mockTabRepository,
         },
+        {
+          provide: getRepositoryToken(BookmarkGroup),
+          useValue: mockBookmarkGroupRepository,
+        },
+        {
+          provide: FaviconService,
+          useValue: mockFaviconService,
+        },
       ],
     }).compile();
 
     service = module.get<BookmarksService>(BookmarksService);
+    faviconService = module.get<FaviconService>(FaviconService);
 
     jest.clearAllMocks();
   });
@@ -97,8 +141,12 @@ describe('BookmarksService', () => {
         'bookmark',
       );
       expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
-        'bookmark.groups',
-        'groups',
+        'bookmark.bookmarkGroups',
+        'bookmarkGroups',
+      );
+      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+        'bookmarkGroups.group',
+        'group',
       );
       expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
         'bookmark.tabs',
@@ -151,7 +199,7 @@ describe('BookmarksService', () => {
       expect(result).toEqual(mockBookmark);
       expect(mockBookmarkRepository.findOne).toHaveBeenCalledWith({
         where: { id: '1' },
-        relations: ['groups', 'tabs'],
+        relations: ['bookmarkGroups', 'bookmarkGroups.group', 'tabs'],
       });
     });
 
@@ -177,10 +225,14 @@ describe('BookmarksService', () => {
       const mockCreatedBookmark = {
         id: 'new-id',
         ...createDto,
+        favicon: 'data:image/png;base64,abc123',
         groups: [],
       };
       const mockSavedBookmark = { id: 'new-id', ...createDto };
 
+      mockFaviconService.fetchFavicon.mockResolvedValue(
+        'data:image/png;base64,abc123',
+      );
       mockBookmarkRepository.create.mockReturnValue(mockSavedBookmark);
       mockBookmarkRepository.save.mockResolvedValue(mockSavedBookmark);
       mockBookmarkRepository.findOne.mockResolvedValue(mockCreatedBookmark);
@@ -188,10 +240,14 @@ describe('BookmarksService', () => {
       const result = await service.create(createDto);
 
       expect(result).toEqual(mockCreatedBookmark);
+      expect(mockFaviconService.fetchFavicon).toHaveBeenCalledWith(
+        createDto.url,
+      );
       expect(mockBookmarkRepository.create).toHaveBeenCalledWith({
         id: expect.any(String) as string,
         name: createDto.name,
         url: createDto.url,
+        favicon: 'data:image/png;base64,abc123',
         tabId: createDto.tabId,
       });
       expect(mockBookmarkRepository.save).toHaveBeenCalled();
@@ -221,17 +277,19 @@ describe('BookmarksService', () => {
         groups: mockGroups,
       };
 
+      mockFaviconService.fetchFavicon.mockResolvedValue(
+        'data:image/png;base64,abc123',
+      );
       mockBookmarkRepository.create.mockReturnValue(mockSavedBookmark);
-      mockGroupRepository.findBy.mockResolvedValue(mockGroups);
       mockBookmarkRepository.save.mockResolvedValue(mockSavedBookmark);
       mockBookmarkRepository.findOne.mockResolvedValue(mockCreatedBookmark);
+      mockBookmarkGroupRepository.create.mockReturnValue({});
+      mockBookmarkGroupRepository.save.mockResolvedValue({});
 
       const result = await service.create(createDto);
 
       expect(result).toEqual(mockCreatedBookmark);
-      expect(mockGroupRepository.findBy).toHaveBeenCalledWith({
-        id: In(['group-1', 'group-2']),
-      });
+      expect(mockBookmarkGroupRepository.save).toHaveBeenCalledTimes(2);
     });
 
     it('should handle null tabId', async () => {
@@ -248,6 +306,7 @@ describe('BookmarksService', () => {
       };
       const mockSavedBookmark = { id: 'new-id', ...createDto, tabId: null };
 
+      mockFaviconService.fetchFavicon.mockResolvedValue(null);
       mockBookmarkRepository.create.mockReturnValue(mockSavedBookmark);
       mockBookmarkRepository.save.mockResolvedValue(mockSavedBookmark);
       mockBookmarkRepository.findOne.mockResolvedValue(mockCreatedBookmark);
@@ -259,6 +318,7 @@ describe('BookmarksService', () => {
         id: expect.any(String) as string,
         name: createDto.name,
         url: createDto.url,
+        favicon: null,
         tabId: null,
       });
     });
@@ -289,6 +349,7 @@ describe('BookmarksService', () => {
         tabs: mockTabs,
       };
 
+      mockFaviconService.fetchFavicon.mockResolvedValue(null);
       mockBookmarkRepository.create.mockReturnValue(mockSavedBookmark);
       mockTabRepository.findBy.mockResolvedValue(mockTabs);
       mockBookmarkRepository.save.mockResolvedValue(mockSavedBookmark);
@@ -304,6 +365,7 @@ describe('BookmarksService', () => {
         id: expect.any(String) as string,
         name: createDto.name,
         url: createDto.url,
+        favicon: null,
         tabId: null,
       });
     });
@@ -331,6 +393,7 @@ describe('BookmarksService', () => {
         tabs: [mockTab],
       };
 
+      mockFaviconService.fetchFavicon.mockResolvedValue(null);
       mockBookmarkRepository.create.mockReturnValue(mockSavedBookmark);
       mockTabRepository.findOne.mockResolvedValue(mockTab);
       mockBookmarkRepository.save.mockResolvedValue(mockSavedBookmark);
@@ -584,7 +647,7 @@ describe('BookmarksService', () => {
 
       expect(mockBookmarkRepository.findOne).toHaveBeenCalledWith({
         where: { id: '1' },
-        relations: ['groups', 'tabs'],
+        relations: ['bookmarkGroups', 'bookmarkGroups.group', 'tabs'],
       });
       expect(mockBookmarkRepository.remove).toHaveBeenCalledWith(mockBookmark);
     });
@@ -605,6 +668,66 @@ describe('BookmarksService', () => {
       await service.removeAll();
 
       expect(mockBookmarkRepository.clear).toHaveBeenCalled();
+    });
+  });
+
+  describe('refreshAllFavicons', () => {
+    it('should refresh favicons for all bookmarks', async () => {
+      const mockBookmarks = [
+        { id: '1', url: 'https://example.com', favicon: null },
+        { id: '2', url: 'https://test.com', favicon: null },
+      ];
+      mockBookmarkRepository.find.mockResolvedValue(mockBookmarks);
+      mockFaviconService.fetchFavicon
+        .mockResolvedValueOnce('data:image/png;base64,abc123')
+        .mockResolvedValueOnce('data:image/png;base64,def456');
+      mockBookmarkRepository.save.mockResolvedValue({});
+
+      const result = await service.refreshAllFavicons();
+
+      expect(result).toEqual({ updated: 2, failed: 0 });
+      expect(mockFaviconService.fetchFavicon).toHaveBeenCalledTimes(2);
+      expect(mockBookmarkRepository.save).toHaveBeenCalledTimes(2);
+    });
+
+    it('should count failed favicon fetches', async () => {
+      const mockBookmarks = [
+        { id: '1', url: 'https://example.com', favicon: null },
+        { id: '2', url: 'https://fail.com', favicon: null },
+      ];
+      mockBookmarkRepository.find.mockResolvedValue(mockBookmarks);
+      mockFaviconService.fetchFavicon
+        .mockResolvedValueOnce('data:image/png;base64,abc123')
+        .mockResolvedValueOnce(null);
+      mockBookmarkRepository.save.mockResolvedValue({});
+
+      const result = await service.refreshAllFavicons();
+
+      expect(result).toEqual({ updated: 1, failed: 1 });
+      expect(mockBookmarkRepository.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle errors during favicon fetch', async () => {
+      const mockBookmarks = [
+        { id: '1', url: 'https://example.com', favicon: null },
+      ];
+      mockBookmarkRepository.find.mockResolvedValue(mockBookmarks);
+      mockFaviconService.fetchFavicon.mockRejectedValue(
+        new Error('Network error'),
+      );
+
+      const result = await service.refreshAllFavicons();
+
+      expect(result).toEqual({ updated: 0, failed: 1 });
+    });
+
+    it('should return zero counts when no bookmarks exist', async () => {
+      mockBookmarkRepository.find.mockResolvedValue([]);
+
+      const result = await service.refreshAllFavicons();
+
+      expect(result).toEqual({ updated: 0, failed: 0 });
+      expect(mockFaviconService.fetchFavicon).not.toHaveBeenCalled();
     });
   });
 });

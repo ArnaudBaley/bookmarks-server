@@ -33,7 +33,7 @@ describe('BookmarkCard', () => {
     expect(wrapper.text()).toContain('Test Bookmark')
   })
 
-  it('renders bookmark icon with correct favicon URL', () => {
+  it('renders bookmark icon with correct favicon URL when no stored favicon', () => {
     const bookmark = createBookmark({ url: 'https://example.com' })
     const wrapper = mount(BookmarkCard, {
       props: { bookmark },
@@ -44,6 +44,29 @@ describe('BookmarkCard', () => {
     expect(img.attributes('src')).toContain('google.com/s2/favicons')
     expect(img.attributes('src')).toContain('example.com')
     expect(img.attributes('alt')).toBe('Test Bookmark icon')
+  })
+
+  it('renders stored favicon when available', () => {
+    const storedFavicon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg=='
+    const bookmark = createBookmark({ url: 'https://example.com', favicon: storedFavicon })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    const img = wrapper.find('img')
+    expect(img.exists()).toBe(true)
+    expect(img.attributes('src')).toBe(storedFavicon)
+  })
+
+  it('falls back to Google favicon when stored favicon is null', () => {
+    const bookmark = createBookmark({ url: 'https://example.com', favicon: null })
+    const wrapper = mount(BookmarkCard, {
+      props: { bookmark },
+    })
+
+    const img = wrapper.find('img')
+    expect(img.exists()).toBe(true)
+    expect(img.attributes('src')).toContain('google.com/s2/favicons')
   })
 
   it('opens URL in new window when card is clicked', () => {

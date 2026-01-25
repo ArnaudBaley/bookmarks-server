@@ -31,6 +31,7 @@ export class BookmarksController {
         id: bookmark.id,
         name: bookmark.name,
         url: bookmark.url,
+        favicon: bookmark.favicon,
         tabId: bookmark.tabId, // Keep for backward compatibility
         tabIds: bookmark.tabs?.map((tab) => tab.id) || [],
         groupIds: bookmark.bookmarkGroups?.map((bg) => bg.groupId) || [],
@@ -53,6 +54,7 @@ export class BookmarksController {
       id: bookmark.id,
       name: bookmark.name,
       url: bookmark.url,
+      favicon: bookmark.favicon,
       tabId: bookmark.tabId, // Keep for backward compatibility
       tabIds: bookmark.tabs?.map((tab) => tab.id) || [],
       groupIds: bookmark.bookmarkGroups?.map((bg) => bg.groupId) || [],
@@ -77,6 +79,7 @@ export class BookmarksController {
       id: bookmark.id,
       name: bookmark.name,
       url: bookmark.url,
+      favicon: bookmark.favicon,
       tabId: bookmark.tabId, // Keep for backward compatibility
       tabIds: bookmark.tabs?.map((tab) => tab.id) || [],
       groupIds: bookmark.bookmarkGroups?.map((bg) => bg.groupId) || [],
@@ -84,6 +87,11 @@ export class BookmarksController {
       createdAt: bookmark.createdAt?.toISOString(),
       updatedAt: bookmark.updatedAt?.toISOString(),
     };
+  }
+
+  @Post('refresh-favicons')
+  async refreshFavicons() {
+    return this.bookmarksService.refreshAllFavicons();
   }
 
   @Delete('all')

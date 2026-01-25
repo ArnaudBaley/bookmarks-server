@@ -22,6 +22,8 @@ const tabStore = useTabStore()
 const showDeleteConfirmation = ref(false)
 const showExportImportModal = ref(false)
 const isDeleting = ref(false)
+const isRefreshingFavicons = ref(false)
+const faviconRefreshResult = ref<{ updated: number; failed: number } | null>(null)
 const error = ref<string | null>(null)
 
 function handleEscapeKey(event: KeyboardEvent) {
@@ -92,6 +94,22 @@ function handleExportImportClick() {
 
 function handleExportImportCancel() {
   showExportImportModal.value = false
+}
+
+async function handleRefreshFavicons() {
+  isRefreshingFavicons.value = true
+  faviconRefreshResult.value = null
+  error.value = null
+
+  try {
+    const result = await bookmarkStore.refreshAllFavicons()
+    faviconRefreshResult.value = result
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to refresh favicons'
+    console.error('Error refreshing favicons:', err)
+  } finally {
+    isRefreshingFavicons.value = false
+  }
 }
 </script>
 
@@ -241,6 +259,28 @@ function handleExportImportCancel() {
             @click="handleExportImportClick"
           >
             Export / Import Data
+          </button>
+        </div>
+
+        <!-- Update Favicons Section -->
+        <div class="p-6 border border-[var(--color-border)] rounded-lg">
+          <h3 class="m-0 mb-3 text-lg text-[var(--color-text)]">Update Favicons</h3>
+          <p class="m-0 mb-4 text-sm text-[var(--color-text)] opacity-70">
+            Refresh all bookmark favicons. This will fetch the latest favicons from the web.
+          </p>
+          <div v-if="faviconRefreshResult" class="mb-4 p-3 rounded text-sm" :class="faviconRefreshResult.failed > 0 ? 'bg-yellow-500/10 text-yellow-600' : 'bg-green-500/10 text-green-600'">
+            Updated {{ faviconRefreshResult.updated }} favicon{{ faviconRefreshResult.updated !== 1 ? 's' : '' }}
+            <span v-if="faviconRefreshResult.failed > 0">
+              ({{ faviconRefreshResult.failed }} failed)
+            </span>
+          </div>
+          <button
+            type="button"
+            class="w-full px-6 py-3 border-none rounded text-base cursor-pointer transition-colors duration-200 bg-[var(--color-background-soft)] text-[var(--color-text)] hover:bg-[var(--color-border)] border border-[var(--color-border)] disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="handleRefreshFavicons"
+            :disabled="isRefreshingFavicons"
+          >
+            {{ isRefreshingFavicons ? 'Updating Favicons...' : 'Update All Favicons' }}
           </button>
         </div>
 

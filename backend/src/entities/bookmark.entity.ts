@@ -25,6 +25,9 @@ export class Bookmark {
   @Column('text')
   url: string;
 
+  @Column('text', { nullable: true })
+  favicon: string | null; // base64 encoded favicon
+
   @Column('varchar', { length: 36, nullable: true })
   tabId: string | null; // Keep for backward compatibility
 
